@@ -2,8 +2,9 @@ const Discord = require("discord.js");
 const pokerBot = new Discord.Client();
 const prefix = "$";
 
-var numPlayers, turn = 9, dealt = 0;
-var nextMsg = "Use $deal to start the next round";
+var numPlayers = 0, turn = 9, dealt = 0, flop;
+var nextMsg = "Use **$deal** to start the next round";
+var _s = "   ";
 
 pokerBot.on("ready", () => {
   console.log("Poker Bot v0.4 loaded.");
@@ -24,9 +25,9 @@ function shuffle(array) { //Shuffle Cards
 var Poker = {};
   Poker.rankArray = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
   Poker.suitArray = [":clubs:",":diamonds:",":hearts:",":spades:"];
-  Poker.deck = [];
-  Poker.deckDisplay = [];
   Poker.newDeck = function(players) {
+    Poker.deck = [];
+    Poker.deckDisplay = [];
     numPlayers = players;
     for(i=0; i<Poker.rankArray.length; i++) {
       for(j=0; j<Poker.suitArray.length; j++) {
@@ -50,20 +51,21 @@ function msg(arg) {
   if (message.author.bot) return;
   if (!message.content.startsWith(prefix)) return;
 
-  let command = message.content.split(" ")[0];
+  var command = message.content.split(" ")[0];
   command = command.slice(prefix.length);
   
-  let args = message.content.split(" ").slice(1);
+  var args = message.content.split(" ").slice(1);
   
   if (command === "poker") {
-    Poker.newDeck(2);
+    Poker.newDeck(args[0]);
+    msg("There are " + " players.");
     msg("Shuffling...");
     shuffle(Poker.deck);
     for(i=0; i<Poker.deck.length; i++) {
       Poker.deckDisplay.push("**" + Poker.deck[i] + "**");
     }
-    embed("Shuffled Deck",Poker.deckDisplay.toString().replace(/,/g , "   "));
-    turn = 0;
+    embed("Shuffled Deck",Poker.deckDisplay.toString().replace(/,/g , _s));
+    turn = dealt = 0;
   }
   
   if (command === "deal") {
@@ -71,16 +73,30 @@ function msg(arg) {
       case 0:
         turn++;
         for(i=0; i<numPlayers*2 - 1; i+=2) {
-            embed("Player " + (i/2 + 1) + "'s Cards",Poker.deckDisplay[i] + "   " + Poker.deckDisplay[i+1]);
+          embed("Player " + (i/2 + 1) + "'s Cards",Poker.deckDisplay[i] + _s + Poker.deckDisplay[i+1]);
         }
+        embed("Pre-Flop");
+        msg(nextMsg);
+        dealt = 3;
+        break;
       case 1:
         turn++;
+        flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt+1] + _s + Poker.deckDisplay[dealt+2];
+        embed("Flop",flop);
+        msg(nextMsg);
+        break;
       case 2:
         turn++;
+        embed("Turn",flop + _s + Poker.deckDisplay[dealt+3]);
+        msg(nextMsg);
+        break;
       case 3:
         turn = 9;
+        embed("River",flop + _s + Poker.deckDisplay[dealt+3] + _s + Poker.deckDisplay[dealt+4]);
+        break;
       case 9:
-        msg("Use $poker to shuffle and start again");
+        msg("Use **$poker** to shuffle and start again");
+        break;
     }
   }
   
