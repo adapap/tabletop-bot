@@ -35,6 +35,9 @@ var Poker = {};
       }
     }
   }
+  
+var Player = {};
+  Poker.players = [];
 
 pokerBot.on("message", message => {
 function code(lang, arg) {
@@ -57,15 +60,33 @@ function msg(arg) {
   var args = message.content.split(" ").slice(1);
   
   if (command === "poker") {
-    Poker.newDeck(args[0]);
-    msg("There are " + " players.");
-    msg("Shuffling...");
-    shuffle(Poker.deck);
-    for(i=0; i<Poker.deck.length; i++) {
-      Poker.deckDisplay.push("**" + Poker.deck[i] + "**");
+    if (players >= 2) {
+      Poker.newDeck(players.length);
+      msg("Shuffling...");
+      shuffle(Poker.deck);
+      for(i=0; i<Poker.deck.length; i++) {
+        Poker.deckDisplay.push("**" + Poker.deck[i] + "**");
+      }
+      embed("Shuffled Deck",Poker.deckDisplay.toString().replace(/,/g , _s));
+      turn = dealt = 0;
     }
-    embed("Shuffled Deck",Poker.deckDisplay.toString().replace(/,/g , _s));
-    turn = dealt = 0;
+  }
+  
+  if (command === "player") {
+    console.log(args);
+    switch(args[0]) {
+      case "add":
+        Player.players.push(args[1]);
+        break;
+      case "del":
+        if (Player.players.indexOf(args[1] > -1) {
+            array.splice(index, 1);
+                  }
+        break;
+      case "clr":
+        Player.players = [];
+        break;
+                  }
   }
   
   if (command === "deal") {
