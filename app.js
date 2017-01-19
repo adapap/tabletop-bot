@@ -34,7 +34,7 @@ var fullname = {
 }
 
 pokerBot.on("ready", () => {
-    console.log("Poker Bot v0.6 loaded.");
+    console.log("Poker Bot v0.7 loaded.");
 });
 
 function shuffle(array) { //Shuffle Cards
@@ -59,20 +59,23 @@ function Player(name, money) {
     this.handVal = 0;
     this.handName = "";
     this.money = money;
+    this.fold = false;
 };
 
-function findPlayer(username) {
+function findPlayer(user) {
     function getIndex(usr) {
-        return this.name === usr;
+        return usr.name == user;
     }
-    playerArray.findIndex(username);
+    return playerArray.findIndex(getIndex);
 }
 
 var Poker = {};
 Poker.community = [];
 Poker.rankArray = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 Poker.suitArray = ["c", "d", "h", "s"];
+Poker.turn;
 Poker.newDeck = function() {
+    Poker.turn = 0;
     Poker.deck = [];
     Poker.deckDisplay = [];
     for (i = 0; i < Poker.rankArray.length; i++) {
@@ -158,7 +161,6 @@ pokerBot.on("message", message => {
             case "del":
                 if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
                     if (findPlayer(args[1]) > -1) {
-                        console.log(findPlayer(args[1]));
                         playerArray.splice(args[1], 1);
                         msg(`${args[1]} was removed to the game.`);
                     }
@@ -187,9 +189,9 @@ pokerBot.on("message", message => {
     
     if (command === "ante") {
         if (game) {
-            //message.author.sendEmbed(playerArray[i / 2].name + "'s Cards", Poker.deckDisplay[i] + _s + Poker.deckDisplay[i + 1]);
-            console.log(message.author);
-            //find playercards from message.author.username
+            var playerIndex = findPlayer(`<@${message.author.id}>`);
+            console.log("playerindex: " + playerIndex);
+            message.author.sendEmbed({ title: "Your Cards", description: Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1]});
         }
         else {
             msg("Game has not started. Start a new game with **$new**...")
