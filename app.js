@@ -7,6 +7,7 @@ var round = 9,
     dealt = 0,
     startMoney = 100,
     eval,
+    game = false,
     maxIndex = 0,
     flop;
 var nextMsg = "Use **$deal** to start the next round...";
@@ -53,12 +54,19 @@ playerArray = [];
 playerCount = 0;
 
 function Player(name, money) {
-    this.name name;
+    this.name = name;
     this.hand = [];
     this.handVal = 0;
     this.handName = "";
     this.money = money;
 };
+
+function findPlayer(username) {
+    function getIndex(usr) {
+        return this.name === usr;
+    }
+    playerArray.findIndex(username);
+}
 
 var Poker = {};
 Poker.community = [];
@@ -131,6 +139,7 @@ pokerBot.on("message", message => {
             Player.handsName = [];
             Poker.community = [];
             msg("Deck shuffled. Use **$deal** to start the game...");
+            game = true;
         } else {
             msg("You need 2-9 players to start a game. Use **$player** for more info...");
         }
@@ -139,7 +148,7 @@ pokerBot.on("message", message => {
     if (command === "player" || command === "p") {
         switch (args[0]) {
             case "add":
-                if (typeof args[1] === 'string' && args[1].substr(0,1) == "@") { //Better test for username needed
+                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
                     playerArray.push(new Player(args[1], startMoney));
                     msg(`${args[1]} was added to the game.`);
                 } else {
@@ -147,9 +156,10 @@ pokerBot.on("message", message => {
                 }
                 break;
             case "del":
-                if (typeof args[1] === 'string' && args[1].substr(0,1) == "@") {
-                    if (Player.players.indexOf(args[1] > -1)) {
-                        Player.players.splice(args[1], 1);
+                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
+                    if (findPlayer(args[1]) > -1) {
+                        console.log(findPlayer(args[1]));
+                        playerArray.splice(args[1], 1);
                         msg(`${args[1]} was removed to the game.`);
                     }
                 } else {
@@ -157,20 +167,33 @@ pokerBot.on("message", message => {
                 }
                 break;
             case "clr":
-                Player.players = [];
+                playerArray = [];
                 msg('Players reset.');
                 break;
             case "list":
-                msg(Player.players.toString());
+                if (playerCount > 0) {
+                    msg(`Current players: ${playerArray.map(function(a) {return a.name; }).toString().replace(/,/g, ', ')}`);
+                }
+                else {
+                    msg("No players have been added to the list.");
+                }
                 break;
             default:
                 msg("```Fix\n$player [add/del] {name} - Add/remove players to the game```");
                 break;
         }
-        Player.count = Player.players.length;
+        playerCount = playerArray.length;
     }
     
     if (command === "ante") {
+        if (game) {
+            //message.author.sendEmbed(playerArray[i / 2].name + "'s Cards", Poker.deckDisplay[i] + _s + Poker.deckDisplay[i + 1]);
+            console.log(message.author);
+            //find playercards from message.author.username
+        }
+        else {
+            msg("Game has not started. Start a new game with **$new**...")
+        }
         //Send message: message.author.send("starting hand");
     }
 
@@ -180,11 +203,11 @@ pokerBot.on("message", message => {
                 round++;
                 embed("Round 1: Pre-Flop");
                 msg("Please wait until all cards are dealt...");
-                for (i = 0; i < Player.count * 2 - 1; i += 2) {
-                    embed(Player.players[i / 2] + "'s Cards", Poker.deckDisplay[i] + _s + Poker.deckDisplay[i + 1]);
-                    Player.hands[i / 2] = [Poker.deck[i], Poker.deck[i + 1]];
+                for (i = 0; i < playerCount * 2 - 1; i += 2) {
+                    //embed(playerArray[i / 2].name + "'s Cards", Poker.deckDisplay[i] + _s + Poker.deckDisplay[i + 1]);
+                    playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                 }
-                msg(nextMsg);
+                msg("Use **$ante** to see your cards (sent privately)");
                 dealt = 4;
                 break;
             case 1:
@@ -210,6 +233,7 @@ pokerBot.on("message", message => {
                 })}**`);
                 embed(Player.players[maxIndex] + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1]);
                 msg("Play again with **$new** or **$poker**!");
+                game = false;
                 break;
             case 9:
                 msg("Use **$poker** to shuffle and start again");
