@@ -5,6 +5,7 @@ const prefix = "$";
 
 var round = 9,
     dealt = 0,
+    startMoney = 100,
     eval,
     maxIndex = 0,
     flop;
@@ -32,7 +33,7 @@ var fullname = {
 }
 
 pokerBot.on("ready", () => {
-    console.log("Poker Bot v0.7 loaded.");
+    console.log("Poker Bot v0.6 loaded.");
 });
 
 function shuffle(array) { //Shuffle Cards
@@ -48,10 +49,16 @@ function shuffle(array) { //Shuffle Cards
     return array;
 }
 
-var Player = {};
-Player.players = [];
-Player.count = 0;
-Player.hands = Player.handsVal = Player.handsName = [];
+playerArray = [];
+playerCount = 0;
+
+function Player(name, money) {
+    this.name name;
+    this.hand = [];
+    this.handVal = 0;
+    this.handName = "";
+    this.money = money;
+};
 
 var Poker = {};
 Poker.community = [];
@@ -76,14 +83,18 @@ Poker.calcHands = function() {
     return maxIndex;
 }
 
+pokerBot.on("guildMemberAdd", guild => {
+    member.guild.defaultChannel.sendMessage(`Welcome ${member.user.username}! Type $help to get started...`);
+})
+
 pokerBot.on("message", message => {
     function code(lang, arg) {
         message.channel.sendCode(lang, arg);
     }
     
-    /*function dm(arg1, arg) {
-        console.log(message.dmChannel);
-    }*/
+    function dm(arg) {
+        message.author.sendMessage(arg);
+    }
 
     function embed(titleArg, desc) {
         message.channel.sendEmbed({
@@ -104,8 +115,8 @@ pokerBot.on("message", message => {
     var args = message.content.split(" ").slice(1);
 
     if (command === "poker" || command === "new") {
-        if (Player.count >= 2 && Player.count <= 9) {
-            Poker.newDeck(Player.count);
+        if (playerCount >= 2 && playerCount <= 9) {
+            Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
             for (i = 0; i < Poker.deck.length; i++) {
                 Poker.deckDisplay.push("**" + Poker.deck[i].replace(/T|c|d|h|s/gi, function(matched) {
@@ -128,15 +139,15 @@ pokerBot.on("message", message => {
     if (command === "player" || command === "p") {
         switch (args[0]) {
             case "add":
-                if (typeof args[1] === 'string') {
-                    Player.players.push(args[1]);
+                if (typeof args[1] === 'string' && args[1].substr(0,1) == "@") { //Better test for username needed
+                    playerArray.push(new Player(args[1], startMoney));
                     msg(`${args[1]} was added to the game.`);
                 } else {
                     msg('Invalid username.');
                 }
                 break;
             case "del":
-                if (typeof args[1] === 'string') {
+                if (typeof args[1] === 'string' && args[1].substr(0,1) == "@") {
                     if (Player.players.indexOf(args[1] > -1)) {
                         Player.players.splice(args[1], 1);
                         msg(`${args[1]} was removed to the game.`);
@@ -157,6 +168,10 @@ pokerBot.on("message", message => {
                 break;
         }
         Player.count = Player.players.length;
+    }
+    
+    if (command === "ante") {
+        //Send message: message.author.send("starting hand");
     }
 
     if (command === "deal") {
@@ -193,7 +208,7 @@ pokerBot.on("message", message => {
                 msg(`${Player.players[maxIndex]} wins with a **${Player.handsName[maxIndex].replace(/^high card$|^one pair$|^two pairs$|^three of a kind$|^straight$|^flush$|^full house$|^four of a kind$|^straight flush$/gi, function(matched) {
                     return fullname[matched];
                 })}**`);
-                embed(Player.players[maxIndex] + "'s Cards", Poker.deckDisplay[2*Player.count - 2] + _s + Poker.deckDisplay[2*Player.count - 1]);
+                embed(Player.players[maxIndex] + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1]);
                 msg("Play again with **$new** or **$poker**!");
                 break;
             case 9:
@@ -211,8 +226,9 @@ pokerBot.on("message", message => {
         code("fix",`$help/$commands - Display this command list
 $deal - Deals cards to all players
 $draw - Draw a random card from the deck
+$money {amount} - Set the starting balance for each player
 $player/$p [add/del/clr/list] - Add/remove/clear/list players
-$poker/$new - Resets the game by shuffling the deck`);
+$poker/$new - Shuffles the deck and starts a new game`);
     }
 });
 
