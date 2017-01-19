@@ -35,6 +35,13 @@ var fullname = {
 
 pokerBot.on("ready", () => {
     console.log("Poker Bot v0.7 loaded.");
+    for (i=0; i < pokerBot.guilds.array().length; i++) {
+        pokerBot.guilds.array()[i].channels.array()[0].sendEmbed({description: `Hello, I am PokerBot!
+In Poker, you are dealt 2 cards and must place and calls bets.
+The player with the highest ranking hand wins (see $table).
+To start a new game, add players with $p and type $new to begin!
+Type **$help** to see my commands`});
+    }
 });
 
 function shuffle(array) { //Shuffle Cards
@@ -67,6 +74,9 @@ function findPlayer(user) {
         return usr.name == user;
     }
     return playerArray.findIndex(getIndex);
+}
+
+function getChannels() {
 }
 
 var Poker = {};
@@ -125,7 +135,7 @@ pokerBot.on("message", message => {
 
     var args = message.content.split(" ").slice(1);
 
-    if (command === "poker" || command === "new") {
+    if (command === "new") {
         if (playerCount >= 2 && playerCount <= 9) {
             Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
@@ -141,10 +151,10 @@ pokerBot.on("message", message => {
             Player.handsVal = [];
             Player.handsName = [];
             Poker.community = [];
-            msg("Deck shuffled. Use **$deal** to start the game...");
+            msg("Deck shuffled. Type **$ante** to check your cards...");
             game = true;
         } else {
-            msg("You need 2-9 players to start a game. Use **$player** for more info...");
+            msg("You need 2-9 players to start a game. Type **$player** for more info...");
         }
     }
 
@@ -181,7 +191,7 @@ pokerBot.on("message", message => {
                 }
                 break;
             default:
-                msg("```Fix\n$player [add/del] {name} - Add/remove players to the game```");
+                msg("```Fix\n$player/$p [add/del] {name} - Add/remove players to the game```");
                 break;
         }
         playerCount = playerArray.length;
@@ -206,10 +216,9 @@ pokerBot.on("message", message => {
                 embed("Round 1: Pre-Flop");
                 msg("Please wait until all cards are dealt...");
                 for (i = 0; i < playerCount * 2 - 1; i += 2) {
-                    //embed(playerArray[i / 2].name + "'s Cards", Poker.deckDisplay[i] + _s + Poker.deckDisplay[i + 1]);
                     playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                 }
-                msg("Use **$ante** to see your cards (sent privately)");
+                msg("Type **$ante** to receive your cards");
                 dealt = 4;
                 break;
             case 1:
@@ -234,11 +243,11 @@ pokerBot.on("message", message => {
                     return fullname[matched];
                 })}**`);
                 embed(Player.players[maxIndex] + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1]);
-                msg("Play again with **$new** or **$poker**!");
+                msg("Play again with **$new**!");
                 game = false;
                 break;
             case 9:
-                msg("Use **$poker** to shuffle and start again");
+                msg("Use **$new** to shuffle and start again");
                 break;
         }
     }
@@ -250,11 +259,17 @@ pokerBot.on("message", message => {
 
     if (command === "help" || command === "commands") {
         code("fix",`$help/$commands - Display this command list
-$deal - Deals cards to all players
+$ante - Check the cards dealt to you
+$deal - Begins the next round of the game (temporary)
 $draw - Draw a random card from the deck
 $money {amount} - Set the starting balance for each player
+$new - Shuffles the deck and starts a new game
 $player/$p [add/del/clr/list] - Add/remove/clear/list players
-$poker/$new - Shuffles the deck and starts a new game`);
+$table - Displays a list of hand types in order of rank`);
+    }
+    if (command === "table") {
+        code("fix",`_Hand Ranks_ (Highest to Lowest)
+**Royal Flush** - A:clubs: K:clubs: Q:clubs: J:clubs: 10:clubs:`);
     }
 });
 
