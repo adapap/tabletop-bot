@@ -5,7 +5,6 @@ const prefix = "$";
 
 var round = -1,
     dealt = 0,
-    startMoney = 100,
     eval,
     game = false,
     maxIndex = 0,
@@ -51,7 +50,7 @@ To see your cards, you will have to pay the 'ante', an entry bet.
 The player with the highest ranking hand wins (see $table).
 To start a new game, add players with $p and type $new to begin!
 
-Type **$help** to see my commands`,color: colors.red});
+Type **$help** to see my commands...`,color: colors.red});
         }
     }
 });
@@ -78,16 +77,28 @@ function Player(name, money) {
     this.handVal = 0;
     this.handName = "";
     this.money = money;
+    this.bet = 0;
     this.ante = false;
     this.fold = false;
+    this.allin = false;
     this.doFold = function(t) {
         if (t) {
-            turn++;
-            this.fold = true;
+            if (!this.fold) {
+                turn++;
+                this.fold = true;
+                return true;
+            }
+            else {
+                return false;
+            }
         }
+        else { return "turn"; }
     }
     this.check = function(t) {
-        if (t) { turn++; }
+        if (t) {
+            turn++;
+        }
+        else { return false; }
     }
     this.raise = function(t) {
         if (t) {
@@ -108,21 +119,19 @@ function findPlayer(user) {
     return playerArray.findIndex(getIndex);
 }
 
-function isTurn(play) {
-    if (playerArray.indexOf(play) == turn) {return true;}
+function isTurn(user) {
+    if (playerArray.indexOf(user) == turn) {return true;}
     else { return false; }
-}
-
-function getChannels() {
 }
 
 var Poker = {};
 Poker.community = [];
 Poker.rankArray = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 Poker.suitArray = ["c", "d", "h", "s"];
+Poker.startMoney = 100;
 Poker.pot = 0;
-Poker.minBet = 0;
-Poker.raise = 0;
+Poker.minBet = 2;
+Poker.curBet = 0;
 Poker.newDeck = function() {
     Poker.deck = [];
     Poker.deckDisplay = [];
@@ -143,11 +152,16 @@ Poker.calcHands = function() {
     return maxIndex;
 }
 
+/*================
+[List of Commands]
+================*/
+
 pokerBot.on("guildMemberAdd", guild => {
     member.guild.defaultChannel.sendMessage(`Welcome ${member.user.username}! Type $help to get started...`);
 })
 
 pokerBot.on("message", message => {
+    const userId = `<@${message.author.id}>`;
     function code(lang, arg) {
         message.channel.sendCode(lang, arg);
     }
@@ -209,7 +223,7 @@ pokerBot.on("message", message => {
         switch (args[0]) {
             case "add":
                 if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
-                    playerArray.push(new Player(args[1], startMoney));
+                    playerArray.push(new Player(args[1], Poker.startMoney));
                     send(`${args[1]} was added to the game.`);
                 } else {
                     send('Invalid username.');
@@ -217,17 +231,14 @@ pokerBot.on("message", message => {
                 break;
             case "del":
                 if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
-                    if (findPlayer(args[1]) > -1) {
-                        playerArray.splice(args[1], 1);
-                        send(`${args[1]} was removed to the game.`);
-                    }
+                    removePlayer(args[1]);
                 } else {
                     send('Invalid username.');
                 }
                 break;
             case "clr":
                 playerArray = [];
-                send('Players reset.');
+                send('Player list cleared.');
                 break;
             case "list":
                 if (playerCount > 0) {
@@ -244,10 +255,71 @@ pokerBot.on("message", message => {
         playerCount = playerArray.length;
     }
     
+    if (command === "money") {
+        if (!game) {
+            if (args[0] >= 20 && args[1] >= 2 || null) {
+                Poker.startMoney = args[0];
+                Poker.minBet = args[1];
+            }
+            else {
+                send(`Starting money must be greater than 20, and the minimum bet must be greater than 2.
+\`$money {start} {min. bet} - Set the starting balance and minimum bet for all players\``);
+            }
+        }
+        else {
+            send("Please wait for the current game to end.");
+        }
+    }
+    
+    if (command === "fold") {
+        var foldReturn = fold(isTurn(userId));
+        if (foldReturn === true) {
+            send(`${playerArray[turn]} folds!`)
+        }
+    }
+
+    function removePlayer(name) {
+        if (findPlayer(name) > -1) {
+            playerArray.splice(name, 1);
+            send(`${name} was removed to the game.`);
+        }
+    }
+    
+    function nextRound() {
+        Poker.curBet = 0;
+        for (i=0; i<playerCount;i++) {
+            playerArray[i].bet = 0;
+        }
+        turn = 0;
+        round++;
+        action();
+    }
+    
+    function actionAble() {
+        if (playerArray[turn].fold === true) {
+            turn++;
+            return false;
+        }
+        else if (playerArray[turn].allin === true) {
+            turn++;
+            return false;
+        }
+        else if (playerArray[turn].money <= Poker.curBet) {
+            return "allin";
+        }
+        else { return true; }
+    }
+    
     function action() {
-        if (round == 0) { //Pre-Flop
+        if (turn < playerCount) { console.log(`
+Current Round: ${round}
+Current Turn/Players: ${turn} - Turn ${playerCount}
+Player Fold/All-In: ${playerArray[turn].fold}/${playerArray[turn].allin}
+Player Bet: ${playerArray[turn].bet}
+Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
+        if (round == 0) { //Ante
             if (turn == 0) {
-                send("",embed("Round 1: Pre-Flop"," ","gold"));
+                send("",embed("Round 1: Ante"," ","gold"));
                 for (i = 0; i < playerCount * 2 - 1; i += 2) {
                     playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                 }
@@ -255,15 +327,33 @@ pokerBot.on("message", message => {
                 dealt = 4;
             }
             else if (turn < playerCount && turn > 0) {
-                send(`${playerCount - turn} player(s) need to **$ante**...`);
+                send(`${playerCount - turn} player(s) remaining to **$ante**...`);
             }
             else {
-                round++;
-                turn = 0;
-                send(nextMsg);
+                nextRound();
             }
         }
-        else if (round == 1) { //Pre-Flop Bet
+        else if (round == 1) { //Pre-Flop Betting
+            if (turn == playerCount) {
+                nextRound();
+            }
+            else {
+                if (actionAble() === true) {
+                    send(`${playerArray[turn].name}, it is your turn. **$check**, **$raise**, **$fold**, or **$call**?`);
+                }
+                else if (actionAble() === "allin") {
+                    send(`${playerArray[turn].name}, it is your turn. You must **$fold** or go all in with **$call**.`);
+                }
+                else {
+                    turn++;
+                    action();
+                }
+            }
+        }
+        else if (round == 2) { //Flop
+            flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt + 1] + _s + Poker.deckDisplay[dealt + 2];
+            send("", embed("Round 2: Flop", flop, "gold"));
+            send("$deal - temporary");
         }
         else if (round == 9) { //End Game
             for (j=0; j < 5; j++) {
@@ -287,11 +377,23 @@ pokerBot.on("message", message => {
     
     if (command === "ante") {
         if (game) {
-            var playerIndex = findPlayer(`<@${message.author.id}>`);
-            if (playerArray[playerIndex].fold == false && playerArray[playerIndex].money >= Poker.minBet)
-            dm(`Channel: #${message.channel.name} | Server: __${message.guild.name}__`,embed("Your Cards",Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1],"green"));
-            if (!playerArray[playerIndex].ante) {playerArray[playerIndex].ante; turn++;}
-            action();
+            var playerIndex = findPlayer(userId);
+            if (playerArray[playerIndex].fold === false && playerArray[playerIndex].money >= Poker.minBet && playerArray[playerIndex].ante === false) {
+                dm(`Channel: #${message.channel.name} | Server: __${message.guild.name}__`,embed("Your Cards",Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1],"green"));
+                playerArray[playerIndex].ante = true;
+                playerArray[playerIndex].money -= Poker.minBet;
+                Poker.pot += Poker.minBet;
+                turn++;
+                action();
+            }
+            else if (playerArray[playerIndex].fold) { send(`${userId} has already folded!`); }
+            else if (playerArray[playerIndex].money < Poker.minBet && playerArray[playerIndex].money > 0) { send(`${userId} is going all in!`); playerArray[playerIndex].ante = true; playerArray[playerIndex].allin = true; Poker.pot += playerArray[playerIndex].money; playerArray[playerIndex].money = 0; turn++; action(); }
+            else if (playerArray[playerIndex].ante === true) {
+                send(`${userId} has already called the ante!`);
+            }
+            else {
+                send("You cannot ante at this time. Please wait until the game is over.");
+            }
         }
         else {
             send("Game has not started. Start a new game with **$new**...")
@@ -299,11 +401,6 @@ pokerBot.on("message", message => {
     }
     if (command === "deal") {
         switch (round) {
-            case 1:
-                round++;
-                flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt + 1] + _s + Poker.deckDisplay[dealt + 2];
-                send(nextMsg, embed("Round 2: Flop", flop, "gold"));
-                break;
             case 2:
                 round++;
                 send(nextMsg, embed("Round 3: Turn", `${flop}   ${Poker.deckDisplay[dealt + 3]}`,"gold"));
@@ -317,7 +414,7 @@ pokerBot.on("message", message => {
     }
 
     if (command === "draw") {
-        if (game) { send("Your card is: ",embed(null, Poker.deck[Math.random * Poker.deck.length],"black")); }
+        if (game) { send("Your card is: ",embed("", Poker.deckDisplay[Math.random() * Poker.deckDisplay.length],"black")); }
         else { send("The deck is not shuffled. Type **$new** to shuffle the deck.")}
     }
 
@@ -327,7 +424,7 @@ $help/$commands - Display this command list
 $ante - Check the cards dealt to you
 $deal - Begins the next round of the game (temporary)
 $draw - Draw a random card from the deck
-$money {amount} - Set the starting balance for each player
+$money {start} {min. bet} - Set the starting balance and minimum bet for all players
 $new - Shuffles the deck and starts a new game
 $player/$p [add/del/clr/list] - Add/remove/clear/list players
 $table - Displays a list of hand types in order of rank`);
