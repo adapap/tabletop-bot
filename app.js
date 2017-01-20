@@ -3,12 +3,13 @@ const Evaluator = require("poker-evaluator");
 const pokerBot = new Discord.Client();
 const prefix = "$";
 
-var round = 9,
+var round = -1,
     dealt = 0,
     startMoney = 100,
     eval,
     game = false,
     maxIndex = 0,
+    turn = -1,
     flop;
 var nextMsg = "Use **$deal** to start the next round...";
 var _s = "   ";
@@ -20,7 +21,12 @@ var shorthand = {
     h: ":hearts:",
     s: ":spades:"
 };
-
+var colors = {
+    red: "15158332",
+    green: "2667619",
+    gold: "15844367",
+    black: "1"
+}
 var fullname = {
     "high card": "High Card :top:",
     "one pair": "Pair :pear:",
@@ -34,13 +40,19 @@ var fullname = {
 }
 
 pokerBot.on("ready", () => {
-    console.log("Poker Bot v0.7 loaded.");
-    for (i=0; i < pokerBot.guilds.array().length; i++) {
-        pokerBot.guilds.array()[i].channels.array()[0].sendEmbed({description: `Hello, I am PokerBot!
-In Poker, you are dealt 2 cards and must place and calls bets.
+    console.log("Poker Bot v0.9 loaded.");
+    pokerBot.user.setGame("$help");
+    botChannels = pokerBot.channels.array();
+    for (i=0; i < botChannels.length; i++) {
+        if (botChannels[i].type == "text") {
+        botChannels[i].sendEmbed({title: "Hello, I am *PokerBot*!",description: `In Poker, you are dealt 2 cards and must place and call bets.
+To see your cards, you will have to pay the 'ante', an entry bet.
+*Note*: Currently, there are no blind bets through this bot.
 The player with the highest ranking hand wins (see $table).
 To start a new game, add players with $p and type $new to begin!
-Type **$help** to see my commands`});
+
+Type **$help** to see my commands`,color: colors.red});
+        }
     }
 });
 
@@ -66,7 +78,27 @@ function Player(name, money) {
     this.handVal = 0;
     this.handName = "";
     this.money = money;
+    this.ante = false;
     this.fold = false;
+    this.doFold = function(t) {
+        if (t) {
+            turn++;
+            this.fold = true;
+        }
+    }
+    this.check = function(t) {
+        if (t) { turn++; }
+    }
+    this.raise = function(t) {
+        if (t) {
+            //Raise Function with Poker.raise
+        }
+    }
+    this.call = function(t) {
+        if (t) {
+            //Call Function from Poker.raise
+        }
+    }
 };
 
 function findPlayer(user) {
@@ -76,6 +108,11 @@ function findPlayer(user) {
     return playerArray.findIndex(getIndex);
 }
 
+function isTurn(play) {
+    if (playerArray.indexOf(play) == turn) {return true;}
+    else { return false; }
+}
+
 function getChannels() {
 }
 
@@ -83,9 +120,9 @@ var Poker = {};
 Poker.community = [];
 Poker.rankArray = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 Poker.suitArray = ["c", "d", "h", "s"];
-Poker.turn;
+Poker.pot = 0;
+Poker.raise = 0;
 Poker.newDeck = function() {
-    Poker.turn = 0;
     Poker.deck = [];
     Poker.deckDisplay = [];
     for (i = 0; i < Poker.rankArray.length; i++) {
@@ -95,12 +132,13 @@ Poker.newDeck = function() {
     }
 }
 Poker.calcHands = function() {
-    for(i=0; i < Player.count; i++) {
-        eval = Evaluator.evalHand(Player.hands[i].concat(Poker.community));
-        Player.handsVal[i] = eval.value;
-        Player.handsName[i] = eval.handName;
+    for(i=0; i < playerCount; i++) {
+        eval = Evaluator.evalHand(playerArray[i].hand.concat(Poker.community));
+        playerArray[i].handVal = eval.value;
+        playerArray[i].handName = eval.handName;
     }
-    maxIndex = Player.handsVal.indexOf(Math.max(...Player.handsVal));
+    var maxArray = playerArray.map(function(a) {return a.handVal});
+    maxIndex = maxArray.indexOf(Math.max(...maxArray));
     return maxIndex;
 }
 
@@ -112,28 +150,38 @@ pokerBot.on("message", message => {
     function code(lang, arg) {
         message.channel.sendCode(lang, arg);
     }
+    function dm(msg, emb) {
+        message.author.send(msg, emb);
+    }
+    function embed(titleArg, desc, color) {
+        return {embed: {title: titleArg,
+            description: desc,
+            color: color.replace(/^red$|^green$|^gold$|^black$/gi, function(matched) {return colors[matched];})
+        }};
+    }
+    function purge(amount) {
+        message.channel.fetchMessages({limit: amount || 10}).then(messages => message.channel.bulkDelete(messages)).catch(console.error);
+    }
+    function send(msg, embed) {
+        message.channel.send(msg, embed);
+    }
     
-    function dm(arg) {
-        message.author.sendMessage(arg);
-    }
-
-    function embed(titleArg, desc) {
-        message.channel.sendEmbed({
-            title: titleArg,
-            description: desc
-        });
-    }
-
-    function msg(arg) {
-        message.channel.sendMessage(arg);
-    }
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
+    if (message.channel.type !== "text") { send("You must be in a guild channel to use commands."); return; }
 
     var command = message.content.split(" ")[0];
     command = command.slice(prefix.length);
 
     var args = message.content.split(" ").slice(1);
+    
+    if (command === "test") {
+        
+    }
+    
+    if (command === "$clear") {
+        purge(args[0]);
+    }
 
     if (command === "new") {
         if (playerCount >= 2 && playerCount <= 9) {
@@ -146,15 +194,13 @@ pokerBot.on("message", message => {
             }
             //embed("Shuffled Deck", Poker.deckDisplay.toString().replace(/,/g, _s));
             round = 0;
+            turn = 0;
             dealt = 0;
-            Player.hands = [];
-            Player.handsVal = [];
-            Player.handsName = [];
-            Poker.community = [];
-            msg("Deck shuffled. Type **$ante** to check your cards...");
+            send("Deck shuffled. Please wait until all cards are dealt...");
             game = true;
+            action();
         } else {
-            msg("You need 2-9 players to start a game. Type **$player** for more info...");
+            send("You need 2-9 players to start a game. Type **$player** for more info...");
         }
     }
 
@@ -163,102 +209,118 @@ pokerBot.on("message", message => {
             case "add":
                 if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
                     playerArray.push(new Player(args[1], startMoney));
-                    msg(`${args[1]} was added to the game.`);
+                    send(`${args[1]} was added to the game.`);
                 } else {
-                    msg('Invalid username.');
+                    send('Invalid username.');
                 }
                 break;
             case "del":
                 if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
                     if (findPlayer(args[1]) > -1) {
                         playerArray.splice(args[1], 1);
-                        msg(`${args[1]} was removed to the game.`);
+                        send(`${args[1]} was removed to the game.`);
                     }
                 } else {
-                    msg('Invalid username.');
+                    send('Invalid username.');
                 }
                 break;
             case "clr":
                 playerArray = [];
-                msg('Players reset.');
+                send('Players reset.');
                 break;
             case "list":
                 if (playerCount > 0) {
-                    msg(`Current players: ${playerArray.map(function(a) {return a.name; }).toString().replace(/,/g, ', ')}`);
+                    send(`Current players: ${playerArray.map(function(a) {return a.name; }).toString().replace(/,/g, ', ')}`);
                 }
                 else {
-                    msg("No players have been added to the list.");
+                    send("No players have been added to the list.");
                 }
                 break;
             default:
-                msg("```Fix\n$player/$p [add/del] {name} - Add/remove players to the game```");
+                send("```Fix\n$player/$p [add/del] {name} - Add/remove players to the game```");
                 break;
         }
         playerCount = playerArray.length;
     }
     
-    if (command === "ante") {
-        if (game) {
-            var playerIndex = findPlayer(`<@${message.author.id}>`);
-            console.log("playerindex: " + playerIndex);
-            message.author.sendEmbed({ title: "Your Cards", description: Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1]});
-        }
-        else {
-            msg("Game has not started. Start a new game with **$new**...")
-        }
-        //Send message: message.author.send("starting hand");
-    }
-
-    if (command === "deal") {
-        switch (round) {
-            case 0:
-                round++;
-                embed("Round 1: Pre-Flop");
-                msg("Please wait until all cards are dealt...");
+    function action() {
+        if (round == 0) { //Pre-Flop
+            if (turn == 0) {
+                send("",embed("Round 1: Pre-Flop"," ","gold"));
                 for (i = 0; i < playerCount * 2 - 1; i += 2) {
                     playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                 }
-                msg("Type **$ante** to receive your cards");
+                send("Type **$ante** to receive your cards");
                 dealt = 4;
-                break;
+            }
+            else if (turn < playerCount && turn > 0) {
+                send(`${playerCount - turn} player(s) need to **$ante**...`);
+            }
+            else {
+                round++;
+                turn = 0;
+                send(nextMsg);
+            }
+        }
+        else if (round == 1) { //Pre-Flop Bet
+        }
+        else if (round == 9) { //End Game
+            for (j=0; j < 5; j++) {
+                    Poker.community[j] = Poker.deck[dealt + j];
+            }
+            maxIndex = Poker.calcHands();
+            send(`${playerArray[maxIndex].name} wins with a **${playerArray[maxIndex].handName.replace(/^high card$|^one pair$|^two pairs$|^three of a kind$|^straight$|^flush$|^full house$|^four of a kind$|^straight flush$/gi, function(matched) {
+                return fullname[matched];
+            })}**`,embed(playerArray[maxIndex].name + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1],"green"));
+            game = false;
+            round = -1;
+            turn = -1;
+            Poker.pot = 0;
+            for (i=0; i < playerCount; i++) {
+                playerArray[i].fold = false;
+                playerArray[i].ante = false;
+            }
+            send("Type **$new** to shuffle and start again");
+        }
+    }
+    
+    if (command === "ante") {
+        if (game) {
+            var playerIndex = findPlayer(`<@${message.author.id}>`);
+            dm(`Channel: #${message.channel.name} | Server: __${message.guild.name}__`,embed("Your Cards",Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1],"green"));
+            if (!playerArray[playerIndex].ante) {playerArray[playerIndex].ante; turn++;}
+            action();
+        }
+        else {
+            send("Game has not started. Start a new game with **$new**...")
+        }
+    }
+    if (command === "deal") {
+        switch (round) {
             case 1:
                 round++;
                 flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt + 1] + _s + Poker.deckDisplay[dealt + 2];
-                embed("Round 2: Flop", flop);
-                msg(nextMsg);
+                send(nextMsg, embed("Round 2: Flop", flop, "gold"));
                 break;
             case 2:
                 round++;
-                embed("Round 3: Turn", `${flop}   ${Poker.deckDisplay[dealt + 3]}`);
-                msg(nextMsg);
+                send(nextMsg, embed("Round 3: Turn", `${flop}   ${Poker.deckDisplay[dealt + 3]}`,"gold"));
                 break;
             case 3:
                 round = 9;
-                embed("Final Round: River", `${flop}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`);
-                for (j=0; j < 5; j++) {
-                    Poker.community.push(Poker.deck[dealt + j]);
-                }
-                maxIndex = Poker.calcHands();
-                msg(`${Player.players[maxIndex]} wins with a **${Player.handsName[maxIndex].replace(/^high card$|^one pair$|^two pairs$|^three of a kind$|^straight$|^flush$|^full house$|^four of a kind$|^straight flush$/gi, function(matched) {
-                    return fullname[matched];
-                })}**`);
-                embed(Player.players[maxIndex] + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1]);
-                msg("Play again with **$new**!");
-                game = false;
-                break;
-            case 9:
-                msg("Use **$new** to shuffle and start again");
+                send("",embed("Final Round: River", `${flop}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`,"gold"));
+                action();
                 break;
         }
     }
 
     if (command === "draw") {
-        msg("Your card is: ");
-        embed(null, Poker.deck[Math.random * Poker.deck.length]);
+        send("Your card is: ",embed(null, Poker.deck[Math.random * Poker.deck.length],"black"));
     }
 
     if (command === "help" || command === "commands") {
-        code("fix",`$help/$commands - Display this command list
+        code("fix",`__Command List__
+$help/$commands - Display this command list
 $ante - Check the cards dealt to you
 $deal - Begins the next round of the game (temporary)
 $draw - Draw a random card from the deck
@@ -268,8 +330,9 @@ $player/$p [add/del/clr/list] - Add/remove/clear/list players
 $table - Displays a list of hand types in order of rank`);
     }
     if (command === "table") {
-        code("fix",`_Hand Ranks_ (Highest to Lowest)
-**Royal Flush** - A:clubs: K:clubs: Q:clubs: J:clubs: 10:clubs:`);
+        send("",embed("__Hand Ranks__ (Highest to Lowest)",`**Royal Flush** - A:clubs: K:clubs: Q:clubs: J:clubs: 10:clubs:
+**Straight Flush** - 3:hearts: 4:hearts: 5:hearts: 6:hearts: 7:hearts:
+**Four of a Kind** - K:spades: K:diamonds: 3:clubs: K:hearts: K:clubs:`,"red"));
     }
 });
 
