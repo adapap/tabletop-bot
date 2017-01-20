@@ -121,6 +121,7 @@ Poker.community = [];
 Poker.rankArray = ["2", "3", "4", "5", "6", "7", "8", "9", "T", "J", "Q", "K", "A"];
 Poker.suitArray = ["c", "d", "h", "s"];
 Poker.pot = 0;
+Poker.minBet = 0;
 Poker.raise = 0;
 Poker.newDeck = function() {
     Poker.deck = [];
@@ -184,7 +185,7 @@ pokerBot.on("message", message => {
     }
 
     if (command === "new") {
-        if (playerCount >= 2 && playerCount <= 9) {
+        if (playerCount >= 1 && playerCount <= 9) {
             Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
             for (i = 0; i < Poker.deck.length; i++) {
@@ -287,6 +288,7 @@ pokerBot.on("message", message => {
     if (command === "ante") {
         if (game) {
             var playerIndex = findPlayer(`<@${message.author.id}>`);
+            if (playerArray[playerIndex].fold == false && playerArray[playerIndex].money >= Poker.minBet)
             dm(`Channel: #${message.channel.name} | Server: __${message.guild.name}__`,embed("Your Cards",Poker.deckDisplay[playerIndex * 2] + _s + Poker.deckDisplay[playerIndex * playerIndex * 2 + 1],"green"));
             if (!playerArray[playerIndex].ante) {playerArray[playerIndex].ante; turn++;}
             action();
@@ -315,11 +317,12 @@ pokerBot.on("message", message => {
     }
 
     if (command === "draw") {
-        send("Your card is: ",embed(null, Poker.deck[Math.random * Poker.deck.length],"black"));
+        if (game) { send("Your card is: ",embed(null, Poker.deck[Math.random * Poker.deck.length],"black")); }
+        else { send("The deck is not shuffled. Type **$new** to shuffle the deck.")}
     }
 
     if (command === "help" || command === "commands") {
-        code("fix",`__Command List__
+        code("fix",`[Command List]
 $help/$commands - Display this command list
 $ante - Check the cards dealt to you
 $deal - Begins the next round of the game (temporary)
@@ -331,7 +334,9 @@ $table - Displays a list of hand types in order of rank`);
     }
     if (command === "table") {
         send("",embed("__Hand Ranks__ (Highest to Lowest)",`**Royal Flush** - A:clubs: K:clubs: Q:clubs: J:clubs: 10:clubs:
+
 **Straight Flush** - 3:hearts: 4:hearts: 5:hearts: 6:hearts: 7:hearts:
+
 **Four of a Kind** - K:spades: K:diamonds: 3:clubs: K:hearts: K:clubs:`,"red"));
     }
 });
