@@ -3,14 +3,20 @@ const Evaluator = require("poker-evaluator");
 const pokerBot = new Discord.Client();
 const prefix = "$";
 
-var round = -1,
+/*=================
+[Variables/Objects]
+=================*/
+
+var round = 0,
     dealt = 0,
     eval,
     game = false,
     maxIndex = 0,
-    turn = -1,
+    turn = 0,
     flop;
 var nextMsg = "Use **$deal** to start the next round...";
+var startGameMsg = "Game has not started. Start a new game with **$new**...";
+var endGameMsg = "Please wait for the current game to end.";
 var _s = "   ";
 
 var shorthand = {
@@ -38,41 +44,12 @@ var fullname = {
     "straight flush": "Straight/Royal Flush :dollar::crown::moneybag:"
 }
 
-pokerBot.on("ready", () => {
-    console.log("Poker Bot v0.9 loaded.");
-    pokerBot.user.setGame("$help");
-    botChannels = pokerBot.channels.array();
-    for (i=0; i < botChannels.length; i++) {
-        if (botChannels[i].type == "text") {
-        botChannels[i].sendEmbed({title: "Hello, I am *PokerBot*!",description: `In Poker, you are dealt 2 cards and must place and call bets.
-To see your cards, you will have to pay the 'ante', an entry bet.
-*Note*: Currently, there are no blind bets through this bot.
-The player with the highest ranking hand wins (see $table).
-To start a new game, add players with $p and type $new to begin!
-
-Type **$help** to see my commands...`,color: colors.red});
-        }
-    }
-});
-
-function shuffle(array) { //Shuffle Cards
-    var cur = array.length,
-        temp, rand;
-    while (0 !== cur) {
-        rand = Math.floor(Math.random() * cur);
-        cur -= 1;
-        temp = array[cur];
-        array[cur] = array[rand];
-        array[rand] = temp;
-    }
-    return array;
-}
-
 playerArray = [];
 playerCount = 0;
 
-function Player(name, money) {
+function Player(name, money, username) {
     this.name = name;
+    this.username = username;
     this.hand = [];
     this.handVal = 0;
     this.handName = "";
@@ -95,9 +72,9 @@ function Player(name, money) {
     }
     this.check = function(t) {
         if (t) {
-            turn++;
+            //Check Function
         }
-        else { return false; }
+        else { return "turn"; }
     }
     this.raise = function(t) {
         if (t) {
@@ -110,19 +87,6 @@ function Player(name, money) {
         }
     }
 };
-
-function findPlayer(user) {
-    function getIndex(usr) {
-        return usr.name == user;
-    }
-    return playerArray.findIndex(getIndex);
-}
-
-function isTurn(user) {
-    var names = playerArray.map(function(a) { return a.name; });
-    if (names.indexOf(user) == turn) {return true;}
-    else { return false; }
-}
 
 var Poker = {};
 Poker.community = [];
@@ -154,6 +118,53 @@ Poker.calcHands = function() {
 }
 
 /*================
+[Global Functions]
+================*/
+
+function shuffle(array) { //Shuffle Cards
+    var cur = array.length,
+        temp, rand;
+    while (0 !== cur) {
+        rand = Math.floor(Math.random() * cur);
+        cur -= 1;
+        temp = array[cur];
+        array[cur] = array[rand];
+        array[rand] = temp;
+    }
+    return array;
+}
+
+function findPlayer(user) {
+    function getIndex(usr) {
+        return usr.name == user;
+    }
+    return playerArray.findIndex(getIndex);
+}
+
+function isTurn(user) {
+    var names = playerArray.map(function(a) { return a.name; });
+    if (names.indexOf(user) == turn) {return true;}
+    else { return false; }
+}
+
+pokerBot.on("ready", () => {
+    console.log("Poker Bot v0.9 loaded.");
+    pokerBot.user.setGame("$help");
+    botChannels = pokerBot.channels.array();
+    for (i=0; i < botChannels.length; i++) {
+        if (botChannels[i].type == "text") {
+        botChannels[i].sendEmbed({title: "Hello, I am *PokerBot*!",description: `In Poker, you are dealt 2 cards and must place and call bets.
+To see your cards, you will have to pay the 'ante', an entry bet.
+*Note*: Currently, there are no blind bets through this bot.
+The player with the highest ranking hand wins (see $table).
+To start a new game, add players with $p and type $new to begin!
+
+Type **$help** to see my commands...`,color: colors.red});
+        }
+    }
+});
+
+/*================
 [List of Commands]
 ================*/
 
@@ -162,7 +173,12 @@ pokerBot.on("guildMemberAdd", guild => {
 })
 
 pokerBot.on("message", message => {
+    /*===================
+    [onMessage Functions]
+    ===================*/
     var userId = `<@${message.author.id}>`;
+    var userName = message.author.username;
+    var userNameArray = message.channel.guild.members.array();
     function code(lang, arg) {
         message.channel.sendCode(lang, arg);
     }
@@ -176,128 +192,46 @@ pokerBot.on("message", message => {
         }};
     }
     function purge(amount) {
-        message.channel.fetchMessages({limit: amount || 10}).then(messages => message.channel.bulkDelete(messages)).catch(console.error);
+        if (amount > 1) {
+            message.channel.fetchMessages({limit: amount || 10}).then(messages => message.channel.bulkDelete(messages)).catch(console.error);
+        }
+        else if (amount == 1) {
+            message.delete();
+        }
+        else {
+            send("Invalid amount of messages.");
+        }
     }
     function send(msg, embed) {
         message.channel.send(msg, embed);
     }
     
-    if (message.author.bot) return;
-    if (!message.content.startsWith(prefix)) return;
-    if (message.channel.type !== "text") { send("You must be in a guild channel to use commands."); return; }
-
-    var command = message.content.split(" ")[0];
-    command = command.slice(prefix.length);
-
-    var args = message.content.split(" ").slice(1);
-    
-    if (command === "test") {
-        
-    }
-    
-    if (command === "$clear") {
-        purge(args[0]);
-    }
-
-    if (command === "new") {
-        if (playerCount >= 1 && playerCount <= 9) {
-            Poker.newDeck(Player.count, args[0]);
-            shuffle(Poker.deck);
-            for (i = 0; i < Poker.deck.length; i++) {
-                Poker.deckDisplay.push("**" + Poker.deck[i].replace(/T|c|d|h|s/gi, function(matched) {
-                    return shorthand[matched];
-                }) + "**");
+    function balance(user) {
+        if (user !== "all") {
+            if (findPlayer(user) == -1) {
+                return `${user} is not currently playing. Type **$p** to learn how to add players!`;
             }
-            //embed("Shuffled Deck", Poker.deckDisplay.toString().replace(/,/g, _s));
-            round = 0;
-            turn = 0;
-            dealt = 0;
-            send("Deck shuffled. Please wait until all cards are dealt...");
-            game = true;
-            action();
-        } else {
-            send("You need 2-9 players to start a game. Type **$player** for more info...");
-        }
-    }
-
-    if (command === "player" || command === "p") {
-        switch (args[0]) {
-            case "add":
-                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
-                    playerArray.push(new Player(args[1], Poker.startMoney));
-                    send(`${args[1]} was added to the game.`);
-                } else {
-                    send('Invalid username.');
-                }
-                break;
-            case "del":
-                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
-                    removePlayer(args[1]);
-                } else {
-                    send('Invalid username.');
-                }
-                break;
-            case "clr":
-                playerArray = [];
-                send('Player list cleared.');
-                break;
-            case "list":
-                if (playerCount > 0) {
-                    send(`Current players: ${playerArray.map(function(a) {return a.name; }).toString().replace(/,/g, ', ')}`);
-                }
-                else {
-                    send("No players have been added to the list.");
-                }
-                break;
-            default:
-                send("```Fix\n$player/$p [add/del] {name} - Add/remove players to the game```");
-                break;
-        }
-        playerCount = playerArray.length;
-    }
-    
-    if (command === "money") {
-        if (!game) {
-            if (args[0] >= 20 && args[1] >= 2 || null) {
-                Poker.startMoney = args[0];
-                Poker.minBet = args[1];
-            }
-            else {
-                send(`Starting money must be greater than 20, and the minimum bet must be greater than 2.
-\`$money {start} {min. bet} - Set the starting balance and minimum bet for all players\``);
-            }
+            else { return `${playerArray[findPlayer(user)].username} - $${playerArray[findPlayer(user)].money}`; }
         }
         else {
-            send("Please wait for the current game to end.");
+            if (playerCount == 0) {
+                return `There are no players in the game. Type **$p** to learn how to add players!`;
+            }
+            else {
+                var balance = [];
+                for (i=0; i < playerCount; i++) {
+                    balance.push(`${playerArray[i].username} - $${playerArray[i].money}\n`);
+                }
+                return balance.sort().toString().replace(/,/g,"");
+            }
         }
     }
     
-    function balance(user) {
-        //if args[0] exists, find player
-        //Otherwise, display all balances
+    function getUserName(id) {
+        var userIndex = userNameArray.map(function(a) { return `<@${a.user.id}>`;}).indexOf(id);
+        return userNameArray[userIndex].user.username;
     }
     
-    if (command === "balance") {
-        //args[0] -> findPlayer(args[0]);
-        //balance(args[0]);
-    }
-    
-    if (command === "fold") {
-        var foldReturn = playerArray[turn].doFold(isTurn(userId));
-        if (foldReturn === true) {
-            send(`${playerArray[turn].name} folds!`);
-            Poker.foldCount++;
-            turn++;
-            action();
-        }
-        else if (foldReturn === false) {
-            send(`${playerArray[turn].name}, you already folded!`);
-        }
-        else if (foldReturn === "turn") {
-            send(`${playerArray[turn].name}, it is not your turn.`);
-        }
-    }
-
     function removePlayer(name) {
         if (findPlayer(name) > -1) {
             playerArray.splice(name, 1);
@@ -306,6 +240,7 @@ pokerBot.on("message", message => {
     }
     
     function nextRound() {
+        balance("all");
         Poker.curBet = 0;
         for (i=0; i<playerCount;i++) {
             playerArray[i].bet = 0;
@@ -316,6 +251,7 @@ pokerBot.on("message", message => {
     }
     
     function endGame() {
+        balance("all");
         game = false;
         round = -1;
         turn = -1;
@@ -354,13 +290,14 @@ pokerBot.on("message", message => {
     }
     
     function action() {
+        console.log(Poker.foldCount + " | " + playerCount);
         if (turn < playerCount) { console.log(`
 Current Round: ${round}
 Current Turn/Players: ${turn}/${playerCount}
 Player Fold/All-In: ${playerArray[turn].fold}/${playerArray[turn].allin}
 Player Bet: ${playerArray[turn].bet}
 Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
-        if (Poker.foldCount !== playerCount - 1 && Poker.foldCount !== 0) {
+        if (Poker.foldCount !== playerCount - 1 || Poker.foldCount == 0) {
             if (round == 0) { //Ante
                 if (turn == 0) {
                     send("",embed("Round 1: Ante"," ","gold"));
@@ -425,6 +362,133 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
             endGame();
         }
     }
+    /*==================
+    [onMessage Commands]
+    ==================*/
+    if (message.author.bot) return;
+    if (!message.content.startsWith(prefix)) return;
+    if (message.channel.type !== "text") { send("You must be in a guild channel to use commands."); return; }
+
+    var command = message.content.split(" ")[0];
+    command = command.slice(prefix.length);
+    var args = message.content.split(" ").slice(1);
+    
+    if (command === "test") {
+        console.log(message.channel.messages.array()[0].channel.lastMessageID);
+    }
+    
+    if (command === "$clear") {
+        purge(args[0]);
+    }
+    
+    if (command === "$showDeck") {
+        embed("Shuffled Deck", Poker.deckDisplay.toString().replace(/,/g, _s));
+    }
+
+    if (command === "new") {
+        if (playerCount >= 1 && playerCount <= 9) {
+            Poker.newDeck(Player.count, args[0]);
+            shuffle(Poker.deck);
+            for (i = 0; i < Poker.deck.length; i++) {
+                Poker.deckDisplay.push("**" + Poker.deck[i].replace(/T|c|d|h|s/gi, function(matched) {
+                    return shorthand[matched];
+                }) + "**");
+            }
+            round = 0;
+            turn = 0;
+            dealt = 0;
+            send("Deck shuffled. Please wait until all cards are dealt...");
+            game = true;
+            action();
+        } else {
+            send("You need 2-9 players to start a game. Type **$player** for more info...");
+        }
+    }
+
+    if (command === "player" || command === "p") {
+        if (!game) {
+            switch (args[0]) {
+            case "add":
+                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
+                    playerArray.push(new Player(args[1], Poker.startMoney, getUserName(args[1])));
+                    send(`${args[1]} was added to the game.`);
+                } else {
+                    send('Invalid username.');
+                }
+                break;
+            case "del":
+                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') {
+                    removePlayer(args[1]);
+                } else {
+                    send('Invalid username.');
+                }
+                break;
+            case "clr":
+                playerArray = [];
+                send('Player list cleared.');
+                break;
+            case "list":
+                if (playerCount > 0) {
+                    send(`Current players: ${playerArray.map(function(a) {return a.name; }).toString().replace(/,/g, ', ')}`);
+                }
+                else {
+                    send("No players have been added to the list.");
+                }
+                break;
+            default:
+                send("*Note: Players are removed upon losing all of their money*```Fix\n$player/$p [add/del] {name} - Add/remove players to the game```");
+                break;
+            }
+            playerCount = playerArray.length;
+        }
+        else send(endGameMsg);
+    }
+    
+    if (command === "money") {
+        if (!game) {
+            if (args[0] >= 20 && args[1] >= 2 || null) {
+                Poker.startMoney = args[0];
+                Poker.minBet = args[1];
+            }
+            else {
+                send(`Starting money must be greater than 20, and the minimum bet must be greater than 2.
+\`$money {start} {min. bet} - Set the starting balance and minimum bet for all players\``);
+            }
+        }
+        else {
+            send(endGameMsg);
+        }
+    }
+    
+    if (command === "balance" || command === "bal") {
+        if (typeof args[0] === 'string' && args[0].substr(0,2) == '<@') {
+            send("",embed("Balance",balance(args[0]),"green"));
+        }
+        else {
+            send("",embed("Balances",balance("all"),"green"));
+        }
+    }
+    
+    if (command === "fold") {
+        if (game) {
+            var foldReturn = playerArray[turn].doFold(isTurn(userId));
+            if (foldReturn === true) {
+                send(`${playerArray[turn].name} folds!`);
+                Poker.foldCount++;
+                turn++;
+                action();
+            }
+            else if (foldReturn === false) {
+                send(`${playerArray[turn].name}, you already folded!`);
+            }
+            else if (foldReturn === "turn") {
+                send(`${playerArray[turn].name}, it is not your turn.`);
+            }
+        }
+        else {
+            send(startGameMsg);
+        }
+    }
     
     if (command === "ante") {
         if (game) {
@@ -447,7 +511,7 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
             }
         }
         else {
-            send("Game has not started. Start a new game with **$new**...")
+            send(startGameMsg)
         }
     }
     if (command === "deal") {
@@ -473,6 +537,7 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
         code("fix",`[Command List]
 $help/$commands - Display this command list
 $ante - Check the cards dealt to you
+$balance/$bal {player} - Shows the balances of all players of a specific player
 $deal - Begins the next round of the game (temporary)
 $draw - Draw a random card from the deck
 $money {start} {min. bet} - Set the starting balance and minimum bet for all players
