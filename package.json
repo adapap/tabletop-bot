@@ -1,0 +1,28 @@
+{
+  "name": "pokerbot",
+  "version": "1.0.0",
+  "description": "A Discord Bot that allows you to play Texas Hold 'Em Poker with your friends!",
+  "main": "app.js",
+  "dependencies": {
+    "discord.js": "^11.0.0",
+    "poker-evaluator": "^0.3.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adapap/pokerBot.git"
+  },
+  "keywords": [
+    "node.js",
+    "poker",
+    "pokerBot"
+  ],
+  "author": "adapap",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adapap/pokerBot/issues"
+  },
+  "homepage": "https://github.com/adapap/pokerBot#readme"
+}
