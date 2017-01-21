@@ -17,6 +17,8 @@ var round = 0,
 var nextMsg = "Use **$deal** to start the next round...";
 var startGameMsg = "Game has not started. Start a new game with **$new**...";
 var endGameMsg = "Please wait for the current game to end.";
+var anteMsg = "You cannot do this before or during the ante.";
+var allinMsg = false;
 var _s = "   ";
 
 var shorthand = {
@@ -29,6 +31,7 @@ var shorthand = {
 var colors = {
     red: "15158332",
     green: "2667619",
+    blue: "3447003",
     gold: "15844367",
     black: "1"
 }
@@ -58,6 +61,7 @@ function Player(name, money, username) {
     this.ante = false;
     this.fold = false;
     this.allin = false;
+    this.lastRaise = false;
     this.doFold = function(t) {
         if (t) {
             if (!this.fold) {
@@ -72,19 +76,41 @@ function Player(name, money, username) {
     }
     this.check = function(t) {
         if (t) {
-            //Check Function
+            if (Poker.curBet == 0 || playerArray[turn].bet == Poker.curBet) {
+                return true;
+            }
+            else { return false; }
         }
         else { return "turn"; }
     }
-    this.raise = function(t) {
+    this.raise = function(t, amount) {
         if (t) {
-            //Raise Function with Poker.raise
+            if (amount < playerArray[turn].money) {
+                return true;
+            }
+            else if (amount >= playerArray[turn].money) { return "allin" }
         }
+        else { return "turn"; }
     }
     this.call = function(t) {
         if (t) {
-            //Call Function from Poker.raise
+            if (Poker.curBet !== playerArray[turn].bet) {
+                if (playerArray[turn].money <= (Poker.curBet - playerArray[turn].bet)) {
+                    if (Poker.allinCount == playerCount - 1 && playerCount > 1) {
+                        return "last-allin";
+                    }
+                    else { return "allin"; }
+                }
+                else {
+                    if (Poker.allinCount == playerCount - 1 && playerCount > 1) {
+                        return "last-call";
+                    }
+                    else { return true; }
+                }
+            }
+            else { return false; }
         }
+        else { return "turn"; }
     }
 };
 
@@ -97,6 +123,8 @@ Poker.pot = 0;
 Poker.minBet = 2;
 Poker.curBet = 0;
 Poker.foldCount = 0;
+Poker.allinCount = 0;
+Poker.lastCall = false;
 Poker.newDeck = function() {
     Poker.deck = [];
     Poker.deckDisplay = [];
@@ -148,7 +176,7 @@ function isTurn(user) {
 }
 
 pokerBot.on("ready", () => {
-    console.log("Poker Bot v0.9 loaded.");
+    console.log("Poker Bot v1.0 loaded.");
     pokerBot.user.setGame("$help");
     botChannels = pokerBot.channels.array();
     for (i=0; i < botChannels.length; i++) {
@@ -178,7 +206,7 @@ pokerBot.on("message", message => {
     ===================*/
     var userId = `<@${message.author.id}>`;
     var userName = message.author.username;
-    var userNameArray = message.channel.guild.members.array();
+    if(message.channel.type === "text") { var userNameArray = message.channel.guild.members.array(); }
     function code(lang, arg) {
         message.channel.sendCode(lang, arg);
     }
@@ -188,7 +216,7 @@ pokerBot.on("message", message => {
     function embed(titleArg, desc, color) {
         return {embed: {title: titleArg,
             description: desc,
-            color: color.replace(/^red$|^green$|^gold$|^black$/gi, function(matched) {return colors[matched];})
+            color: color.replace(/^red$|^green$|^gold$|^black$|^blue$/gi, function(matched) {return colors[matched];})
         }};
     }
     function purge(amount) {
@@ -232,6 +260,12 @@ pokerBot.on("message", message => {
         return userNameArray[userIndex].user.username;
     }
     
+    function isBot(id) {
+        var botArray = userNameArray.map(function(a) {return a.user.bot;});
+        var botIndex = userNameArray.map(function(a) { return `<@${a.user.id}>`;}).indexOf(id);
+        return botArray[botIndex];
+    }
+    
     function removePlayer(name) {
         if (findPlayer(name) > -1) {
             playerArray.splice(name, 1);
@@ -240,10 +274,11 @@ pokerBot.on("message", message => {
     }
     
     function nextRound() {
-        balance("all");
+        if (round !== 4) { send("",embed("Balances",balance("all"),"blue")); }
         Poker.curBet = 0;
         for (i=0; i<playerCount;i++) {
             playerArray[i].bet = 0;
+            playerArray[i].lastRaise = false;
         }
         turn = 0;
         round++;
@@ -251,20 +286,24 @@ pokerBot.on("message", message => {
     }
     
     function endGame() {
-        balance("all");
+        send("",embed("Balances",balance("all"),"blue"));
         game = false;
-        round = -1;
-        turn = -1;
+        allinMsg = false;
+        round = 0;
+        turn = 0;
         maxIndex = 0;
         Poker.pot = 0;
         Poker.community = [];
         Poker.curBet = 0;
         Poker.foldCount = 0;
+        Poker.allinCount = 0;
         Poker.deck = [];
+        flop = "";
         for (i=0; i < playerCount; i++) {
             playerArray[i].fold = false;
             playerArray[i].ante = false;
             playerArray[i].allin = false;
+            playerArray[i].lastRaise = false;
             playerArray[i].bet = 0;
             playerArray[i].hand = [];
             playerArray[i].handVal = 0;
@@ -272,6 +311,19 @@ pokerBot.on("message", message => {
         }
         balance();
         send("Type **$new** to shuffle and start again");
+    }
+    
+    function roundAction() {
+        if (actionAble() === true) {
+            send(`${playerArray[turn].name}, it is your turn. **$check**, **$raise**, **$fold**, or **$call**?`);
+        }
+        else if (actionAble() === "allin") {
+            send(`${playerArray[turn].name}, it is your turn. You must **$fold** or go all in with **$call**.`);
+        }
+        else {
+            turn++;
+            action();
+        }
     }
     
     function actionAble() {
@@ -283,28 +335,29 @@ pokerBot.on("message", message => {
             turn++;
             return false;
         }
+        else if (playerArray[turn].lastRaise === true) {
+            return false;
+        }
         else if (playerArray[turn].money <= Poker.curBet) {
             return "allin";
         }
         else { return true; }
     }
-    
+    /*=========
+    [Game Loop]
+    =========*/
     function action() {
-        console.log(Poker.foldCount + " | " + playerCount);
-        if (turn < playerCount) { console.log(`
-Current Round: ${round}
-Current Turn/Players: ${turn}/${playerCount}
-Player Fold/All-In: ${playerArray[turn].fold}/${playerArray[turn].allin}
-Player Bet: ${playerArray[turn].bet}
-Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
-        if (Poker.foldCount !== playerCount - 1 || Poker.foldCount == 0) {
+        if (Poker.lastCall === true) {
+            if (!allinMsg) { send("All other players are all in! Who will win in the showdown?"); allinMsg = true;}
+            nextRound();
+        }
+        else if (Poker.foldCount !== playerCount - 1 || Poker.foldCount == 0) {
             if (round == 0) { //Ante
                 if (turn == 0) {
-                    send("",embed("Round 1: Ante"," ","gold"));
+                    send("",embed("The Ante - Type **$ante** to receive your cards","","gold"));
                     for (i = 0; i < playerCount * 2 - 1; i += 2) {
                         playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                     }
-                    send("Type **$ante** to receive your cards");
                     dealt = 4;
                 }
                 else if (turn < playerCount && turn > 0) {
@@ -315,34 +368,55 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
                 }
             }
             else if (round == 1) { //Pre-Flop Betting
-                if (turn == playerCount) {
+                if (turn == 0 && Poker.curBet == 0) {
+                    send("",embed(`Round 1: Pre-Flop | Pot: $${Poker.pot}`,"","gold"));
+                    roundAction();
+                }
+                else if (turn == playerCount) {
                     nextRound();
                 }
                 else {
-                    if (actionAble() === true) {
-                        send(`${playerArray[turn].name}, it is your turn. **$check**, **$raise**, **$fold**, or **$call**?`);
-                    }
-                    else if (actionAble() === "allin") {
-                        send(`${playerArray[turn].name}, it is your turn. You must **$fold** or go all in with **$call**.`);
-                    }
-                    else {
-                        turn++;
-                        action();
-                    }
+                    roundAction();
                 }
             }
             else if (round == 2) { //Flop
-                flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt + 1] + _s + Poker.deckDisplay[dealt + 2];
-                send("", embed("Round 2: Flop", flop, "gold"));
-                send("$deal - temporary");
+                if (turn == 0 && Poker.curBet == 0) {
+                    flop = Poker.deckDisplay[dealt] + _s + Poker.deckDisplay[dealt + 1] + _s + Poker.deckDisplay[dealt + 2];
+                    send("", embed(`Round 2: Flop | Pot: $${Poker.pot}`, flop, "gold"));
+                    roundAction();
+                }
+                else if (turn == playerCount) {
+                    nextRound();
+                }
+                else {
+                    roundAction();
+                }
             }
             else if (round == 3) {
-
+                if (turn == 0 && Poker.curBet == 0) {
+                    send("", embed(`Round 3: Turn | Pot: $${Poker.pot}`,`${flop}   ${Poker.deckDisplay[dealt + 3]}`,"gold"));
+                    roundAction();
+                }
+                else if (turn == playerCount) {
+                    nextRound();
+                }
+                else {
+                    roundAction();
+                }
             }
             else if (round == 4) {
-
+                if (turn == 0 && Poker.curBet == 0) {
+                    send("",embed(`Final Round: River | Pot: $${Poker.pot}`, `${flop}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`,"gold"));
+                    roundAction();
+                }
+                else if (turn == playerCount) {
+                    nextRound();
+                }
+                else {
+                    roundAction();
+                }
             }
-            else if (round == 9) { //End Game
+            else if (round == 5) { //End Game
                 for (j=0; j < 5; j++) {
                     Poker.community[j] = Poker.deck[dealt + j];
                 }
@@ -374,7 +448,7 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
     var args = message.content.split(" ").slice(1);
     
     if (command === "test") {
-        console.log(message.channel.messages.array()[0].channel.lastMessageID);
+        console.log("No test command set.");
     }
     
     if (command === "$clear") {
@@ -409,11 +483,11 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
         if (!game) {
             switch (args[0]) {
             case "add":
-                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@') { //Better test for username needed
+                if (typeof args[1] === 'string' && args[1].substr(0,2) == '<@' && !isBot(args[1])) { //Improvements for username test?
                     playerArray.push(new Player(args[1], Poker.startMoney, getUserName(args[1])));
                     send(`${args[1]} was added to the game.`);
                 } else {
-                    send('Invalid username.');
+                    send('Invalid username / User is a bot.');
                 }
                 break;
             case "del":
@@ -462,15 +536,15 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
     
     if (command === "balance" || command === "bal") {
         if (typeof args[0] === 'string' && args[0].substr(0,2) == '<@') {
-            send("",embed("Balance",balance(args[0]),"green"));
+            send("",embed("Balance",balance(args[0]),"blue"));
         }
         else {
-            send("",embed("Balances",balance("all"),"green"));
+            send("",embed("Balances",balance("all"),"blue"));
         }
     }
     
     if (command === "fold") {
-        if (game) {
+        if (game && round > 0) {
             var foldReturn = playerArray[turn].doFold(isTurn(userId));
             if (foldReturn === true) {
                 send(`${playerArray[turn].name} folds!`);
@@ -481,13 +555,111 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
             else if (foldReturn === false) {
                 send(`${playerArray[turn].name}, you already folded!`);
             }
-            else if (foldReturn === "turn") {
-                send(`${playerArray[turn].name}, it is not your turn.`);
+            else if (foldReturn === "turn") { send(`${userId}, it is not your turn.`); }
+        }
+        else if (game && round === 0) { send(anteMsg); }
+        else { send(startGameMsg); }
+    }
+    
+    if (command === "check") {
+        if (game && round > 0) {
+            var checkReturn = playerArray[turn].check(isTurn(userId));
+            if (checkReturn === true) {
+                send(`${playerArray[turn].name} checks.`);
+                turn++;
+                action();
+            }
+            else if (checkReturn === false) {
+                send(`${playerArray[turn].name}, you cannot check because someone has raised.`);
+            }
+            else if (foldReturn === "turn") { send(`${userId}, it is not your turn.`); }
+        }
+        else if (game && round === 0) { send(anteMsg); }
+        else { send(startGameMsg); }
+    }
+    
+    if (command === "raise") {
+        if (game && round > 0) {
+            if (parseInt(args[0]) >= Poker.minBet && parseInt(args[0]) >= 2*Poker.curBet) {
+                var raiseReturn = playerArray[turn].raise(isTurn(userId), parseInt(args[0]));
+                if (raiseReturn === true) {
+                    send(`${playerArray[turn].name} raises $${parseInt(args[0])}.`);
+                    Poker.pot += parseInt(args[0]);
+                    Poker.curBet += parseInt(args[0]);
+                    playerArray[turn].money -= parseInt(args[0]);
+                    playerArray[turn].bet += parseInt(args[0]);
+                    playerArray[turn].lastRaise = true;
+                    turn = 0;
+                    action();
+                }
+                else if (raiseReturn === "allin") {
+                    send(`${playerArray[turn].name} is going all in by raising $${playerArray[turn].money}!`);
+                    Poker.pot += playerArray[turn].money;
+                    Poker.curBet += playerArray[turn].money;
+                    Poker.allinCount++;
+                    playerArray[turn].bet += playerArray[turn].money;
+                    playerArray[turn].money = 0;
+                    playerArray[turn].allin = true;
+                    turn = 0;
+                    action();
+                }
+                else if (raiseReturn === "turn") { send(`${userId}, it is not your turn.`); }
+            }
+            else { 
+                var minRaise = Math.max(2*Poker.curBet, Poker.minBet);
+                send(`Invalid raise. The minimum bet is currently $${minRaise}.`)}
+        }
+        else if (game && round === 0) { send(anteMsg); }
+        else { send(startGameMsg); }
+    }
+    
+    if (command === "call") {
+        if (game && round > 0) {
+            var callReturn = playerArray[turn].call(isTurn(userId));
+            var diffBet = Poker.curBet - Poker.bet;
+            if (callReturn === "true") {
+                send(`${playerArray[turn].name} calls $${diffBet}.`);
+                Poker.pot += diffBet;
+                playerArray[turn].bet += diffBet;
+                playerArray[turn].money -= diffBet;
+                turn++;
+                action();
+            }
+            else if (callReturn === "last-call") {
+                send(`${playerArray[turn].name} makes the final call of $${diffBet}.`);
+                Poker.pot += diffBet;
+                Poker.lastCall = true;
+                playerArray[turn].bet += diffBet;
+                playerArray[turn].money -= diffBet;
+                action();
+            }
+            else if (callReturn === "allin") {
+                send(`${playerArray[turn].name} is going in by matching $${playerArray[turn].money}!`);
+                Poker.pot += playerArray[turn].money;
+                Poker.allinCount++;
+                playerArray[turn].bet += playerArray[turn].money;
+                playerArray[turn].money = 0;
+                playerArray[turn].allin = true;
+                turn++;
+                action();
+            }
+            else if (callReturn === "last-allin") {
+                send(`${playerArray[turn].name} is the last to go all in with $${playerArray[turn].money}!`);
+                Poker.pot += playerArray[turn].money;
+                Poker.allinCount++;
+                Poker.lastCall = true;
+                playerArray[turn].bet += playerArray[turn].money;
+                playerArray[turn].money = 0;
+                playerArray[turn].allin = true;
+                action();
+            }
+            else if (callReturn === "turn") { send(`${userId}, it is not your turn.`); }
+            else {
+                send(`${playerArray[turn].name}, there is nothing to call. Did you mean to **$check**?`)
             }
         }
-        else {
-            send(startGameMsg);
-        }
+        else if (game && round === 0) { send(anteMsg); }
+        else { send(startGameMsg); }
     }
     
     if (command === "ante") {
@@ -502,7 +674,7 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
                 action();
             }
             else if (playerArray[playerIndex].fold) { send(`${userId} has already folded!`); }
-            else if (playerArray[playerIndex].money < Poker.minBet && playerArray[playerIndex].money > 0) { send(`${userId} is going all in!`); playerArray[playerIndex].ante = true; playerArray[playerIndex].allin = true; Poker.pot += playerArray[playerIndex].money; playerArray[playerIndex].money = 0; turn++; action(); }
+            else if (playerArray[playerIndex].money < Poker.minBet && playerArray[playerIndex].money > 0) { send(`${userId} is going all in!`); playerArray[playerIndex].ante = true; playerArray[playerIndex].allin = true; Poker.allinCount++; Poker.pot += playerArray[playerIndex].money; playerArray[playerIndex].money = 0; turn++; action(); }
             else if (playerArray[playerIndex].ante === true) {
                 send(`${userId} has already called the ante!`);
             }
@@ -514,20 +686,7 @@ Current Bet/Pot: ${Poker.curBet}/${Poker.pot}`); }
             send(startGameMsg)
         }
     }
-    if (command === "deal") {
-        switch (round) {
-            case 2:
-                round++;
-                send(nextMsg, embed("Round 3: Turn", `${flop}   ${Poker.deckDisplay[dealt + 3]}`,"gold"));
-                break;
-            case 3:
-                round = 9;
-                send("",embed("Final Round: River", `${flop}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`,"gold"));
-                action();
-                break;
-        }
-    }
-
+    
     if (command === "draw") {
         if (game) { send("Your card is: ",embed("", Poker.deckDisplay[Math.floor(Math.random() * Poker.deckDisplay.length - 1)],"black")); }
         else { send("The deck is not shuffled. Type **$new** to shuffle the deck.")}
