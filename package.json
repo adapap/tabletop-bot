@@ -7,22 +7,6 @@
     "discord.js": "^11.0.0",
     "poker-evaluator": "^0.3.1"
   },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/adapap/pokerBot.git"
-  },
-  "keywords": [
-    "node.js",
-    "poker",
-    "pokerBot"
-  ],
   "author": "adapap",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/adapap/pokerBot/issues"
-  },
-  "homepage": "https://github.com/adapap/pokerBot#readme"
+  "license": "MIT"
 }
