@@ -461,7 +461,7 @@ pokerBot.on("message", message => {
     }
 
     if (command === "new") {
-        if (playerCount >= 1 && playerCount <= 9) {
+        if (playerCount >= 2 && playerCount <= 9) {
             Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
             for (i = 0; i < Poker.deck.length; i++) {
