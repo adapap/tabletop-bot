@@ -12,8 +12,7 @@ var round = 0,
     eval,
     game = false,
     maxIndex = 0,
-    turn = 0,
-    flop;
+    turn = 0;
 var nextMsg = "Use **$deal** to start the next round...";
 var startGameMsg = "Game has not started. Start a new game with **$new**...";
 var endGameMsg = "Please wait for the current game to end.";
@@ -304,6 +303,7 @@ pokerBot.on("message", message => {
             playerArray.splice(name, 1);
             send(`${name} was removed to the game.`);
         }
+        playerCount = playerArray.length;
     }
 
     function nextRound() {
@@ -333,7 +333,11 @@ pokerBot.on("message", message => {
         Poker.foldCount = 0;
         Poker.allinCount = 0;
         Poker.deck = [];
-        flop = "";
+        for (i = 0; i < playerCount; i++) {
+            if (playerArray[i].money == 0) {
+                removePlayer(playerArray[i].name);
+            }
+        }
         for (i = 0; i < playerCount; i++) {
             playerArray[i].fold = false;
             playerArray[i].ante = false;
@@ -392,7 +396,7 @@ pokerBot.on("message", message => {
                     for (i = 0; i < playerCount * 2 - 1; i += 2) {
                         playerArray[i / 2].hand = [Poker.deck[i], Poker.deck[i + 1]];
                     }
-                    dealt = 4;
+                    dealt = 2*playerCount;
                 } else if (turn < playerCount && turn > 0) {
                     send(`${playerCount - turn} player(s) remaining to **$ante**...`);
                 } else {
@@ -409,7 +413,7 @@ pokerBot.on("message", message => {
                 }
             } else if (round == 2) { //Flop
                 if (turn == 0 && Poker.curBet == 0) {
-                    send("", embed(`Round 2: Flop | Pot: $${Poker.pot}`, flop, "gold"));
+                    send("", embed(`Round 2: Flop | Pot: $${Poker.pot}`,`${Poker.deckDisplay[dealt]}   ${Poker.deckDisplay[dealt + 1]}   ${Poker.deckDisplay[dealt + 2]}`, "gold"));
                     roundAction();
                 } else if (turn == playerCount) {
                     nextRound();
@@ -418,7 +422,7 @@ pokerBot.on("message", message => {
                 }
             } else if (round == 3) {
                 if (turn == 0 && Poker.curBet == 0) {
-                    send("", embed(`Round 3: Turn | Pot: $${Poker.pot}`, `${flop}   ${Poker.deckDisplay[dealt + 3]}`, "gold"));
+                    send("", embed(`Round 3: Turn | Pot: $${Poker.pot}`, `${Poker.deckDisplay[dealt]}   ${Poker.deckDisplay[dealt + 1]}   ${Poker.deckDisplay[dealt + 2]}   ${Poker.deckDisplay[dealt + 3]}`, "gold"));
                     roundAction();
                 } else if (turn == playerCount) {
                     nextRound();
@@ -427,7 +431,7 @@ pokerBot.on("message", message => {
                 }
             } else if (round == 4) {
                 if (turn == 0 && Poker.curBet == 0) {
-                    send("", embed(`Final Round: River | Pot: $${Poker.pot}`, `${flop}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`, "gold"));
+                    send("", embed(`Final Round: River | Pot: $${Poker.pot}`, `${Poker.deckDisplay[dealt]}   ${Poker.deckDisplay[dealt + 1]}   ${Poker.deckDisplay[dealt + 2]}   ${Poker.deckDisplay[dealt + 3]}   ${Poker.deckDisplay[dealt + 4]}`, "gold"));
                     roundAction();
                 } else if (turn == playerCount) {
                     nextRound();
