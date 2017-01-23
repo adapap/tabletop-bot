@@ -141,7 +141,7 @@ Poker.calcHands = function() {
         playerArray[i].handName = eval.handName;
     }
     var maxArray = playerArray.map(function(a) {return a.handVal});
-    maxIndex = maxArray.indexOf(Math.max(...maxArray));
+    maxIndex = [maxArray.indexOf(Math.max(...maxArray))];
     return maxIndex;
 }
 
@@ -326,11 +326,9 @@ pokerBot.on("message", message => {
     
     function actionAble() {
         if (playerArray[turn].fold === true) {
-            turn++;
             return false;
         }
         else if (playerArray[turn].allin === true) {
-            turn++;
             return false;
         }
         else if (playerArray[turn].lastRaise === true) {
@@ -419,10 +417,12 @@ pokerBot.on("message", message => {
                     Poker.community[j] = Poker.deck[dealt + j];
                 }
                 maxIndex = Poker.calcHands();
-                send(`${playerArray[maxIndex].name} wins $${Poker.pot} with a **${playerArray[maxIndex].handName.replace(/^high card$|^one pair$|^two pairs$|^three of a kind$|^straight$|^flush$|^full house$|^four of a kind$|^straight flush$/gi, function(matched) {
+                    if (maxIndex.length == 1) {
+                        send(`${playerArray[maxIndex[0]].name} wins $${Poker.pot} with a **${playerArray[maxIndex[0]].handName.replace(/^high card$|^one pair$|^two pairs$|^three of a kind$|^straight$|^flush$|^full house$|^four of a kind$|^straight flush$/gi, function(matched) {
                     return fullname[matched];
-                })}**`,embed(playerArray[maxIndex].name + "'s Cards", Poker.deckDisplay[2*maxIndex] + _s + Poker.deckDisplay[2*maxIndex + 1],"green"));
-                playerArray[maxIndex].money += Poker.pot;
+                })}**`,embed(playerArray[maxIndex[0]].name + "'s Cards", Poker.deckDisplay[2*maxIndex[0]] + _s + Poker.deckDisplay[2*maxIndex[0] + 1],"green"));
+                playerArray[maxIndex[0]].money += Poker.pot;
+                    }
                 endGame();
             }
         }
@@ -578,16 +578,19 @@ pokerBot.on("message", message => {
     
     if (command === "raise") {
         if (game && round > 0) {
-            if (parseInt(args[0]) >= Poker.minBet && parseInt(args[0]) >= 2*Poker.curBet) {
+            if (parseInt(args[0]) >= Poker.minBet && parseInt(args[0]) >= 2*Poker.curBet && parseInt(args[0] <= 1000)) {
                 var raiseReturn = playerArray[turn].raise(isTurn(userId), parseInt(args[0]));
                 console.log("Raise: " + args[0] + " | Type: " + typeof args[0]);
                 console.log(typeof parseInt(args[0]));
                 if (raiseReturn === true) {
                     send(`${playerArray[turn].name} raises $${parseInt(args[0])}.`);
                     Poker.pot += parseInt(args[0]);
-                    Poker.curBet += parseInt(args[0]);
+                    Poker.curBet = parseInt(args[0]);
                     playerArray[turn].money -= parseInt(args[0]);
                     playerArray[turn].bet += parseInt(args[0]);
+                    for (i=0; i<playerCount; i++) {
+                        playerArray[i].lastRaise = false;
+                    }
                     playerArray[turn].lastRaise = true;
                     turn = 0;
                     action();
@@ -595,11 +598,15 @@ pokerBot.on("message", message => {
                 else if (raiseReturn === "allin") {
                     send(`${playerArray[turn].name} is going all in by raising $${playerArray[turn].money}!`);
                     Poker.pot += playerArray[turn].money;
-                    Poker.curBet += playerArray[turn].money;
+                    Poker.curBet = playerArray[turn].money;
                     Poker.allinCount++;
                     playerArray[turn].bet += playerArray[turn].money;
                     playerArray[turn].money = 0;
                     playerArray[turn].allin = true;
+                    for (i=0; i<playerCount; i++) {
+                        playerArray[i].lastRaise = false;
+                    }
+                    playerArray[turn].lastRaise = true;
                     turn = 0;
                     action();
                 }
@@ -607,7 +614,7 @@ pokerBot.on("message", message => {
             }
             else { 
                 var minRaise = Math.max(2*Poker.curBet, Poker.minBet);
-                send(`Invalid raise. The minimum bet is currently $${minRaise}.`)}
+                send(`Invalid raise. The minimum bet is currently $${minRaise}, and a maximum of $1000.`)}
         }
         else if (game && round === 0) { send(anteMsg); }
         else { send(startGameMsg); }
