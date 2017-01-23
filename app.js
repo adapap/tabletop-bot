@@ -459,7 +459,7 @@ pokerBot.on("message", message => {
     }
 
     if (command === "new") {
-        if (playerCount >= 1 && playerCount <= 9) {
+        if (playerCount >= 2 && playerCount <= 9) {
             Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
             for (i = 0; i < Poker.deck.length; i++) {
@@ -685,6 +685,14 @@ pokerBot.on("message", message => {
             send(startGameMsg)
         }
     }
+	
+	if (command === "end") {
+		if (game) {
+			endGame();
+			send("Game has been terminated.");
+		}
+		else { send("Game has not started yet."); }
+	}
     
     if (command === "draw") {
         if (game) { send("Your card is: ",embed("", Poker.deckDisplay[Math.floor(Math.random() * Poker.deckDisplay.length - 1)],"black")); }
@@ -704,12 +712,13 @@ $balance/$bal {player} - Shows the balances of all players of a specific player
 $call - Match a bet that was made through a raise
 $check - Play without raising or folding during a turn
 $draw - Draw a random card from the deck
+$end - Ends the current game
 $fold - Stop playing and lose all money played this game
 $money {start} {min. bet} - Set the starting balance and minimum bet for all players
 $new - Shuffles the deck and starts a new game
 $player/$p [add/del/clr/list] - Add/remove/clear/list players
 $raise - Make a bet that other players need to call
-$shutdown - Shuts down the bot from the server
+$restart - Restarts the bot
 $table - Displays a list of hand types in order of rank`);
     }
     if (command === "table") {
