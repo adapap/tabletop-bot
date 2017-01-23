@@ -616,6 +616,7 @@ pokerBot.on("message", message => {
         if (game && round > 0) {
             var callReturn = playerArray[turn].call(isTurn(userId));
             var diffBet = Poker.curBet - Poker.bet;
+		console.log(callReturn);
             if (callReturn === "true") {
                 send(`${playerArray[turn].name} calls $${diffBet}.`);
                 Poker.pot += diffBet;
