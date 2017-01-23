@@ -195,7 +195,7 @@ Type **$help** to see my commands...`,color: colors.red});
 [List of Commands]
 ================*/
 
-pokerBot.on("guildMemberAdd", guild => {
+pokerBot.on("guildMemberAdd", member => {
     member.guild.defaultChannel.sendMessage(`Welcome ${member.user.username}! Type $help to get started...`);
 })
 
@@ -219,14 +219,13 @@ pokerBot.on("message", message => {
         }};
     }
     function purge(amount) {
-        if (amount > 1) {
+        if (amount >= 1 && amount < 100) {
+            amount++;
+            message.delete();
             message.channel.fetchMessages({limit: amount || 10}).then(messages => message.channel.bulkDelete(messages)).catch(console.error);
         }
-        else if (amount == 1) {
-            message.delete();
-        }
         else {
-            send("Invalid amount of messages.");
+            send("Invalid amount of messages. Must be between 1-99.");
         }
     }
     function send(msg, embed) {
@@ -459,7 +458,7 @@ pokerBot.on("message", message => {
     }
 
     if (command === "new") {
-        if (playerCount >= 2 && playerCount <= 9) {
+        if (playerCount >= 1 && playerCount <= 9) {
             Poker.newDeck(Player.count, args[0]);
             shuffle(Poker.deck);
             for (i = 0; i < Poker.deck.length; i++) {
@@ -581,6 +580,8 @@ pokerBot.on("message", message => {
         if (game && round > 0) {
             if (parseInt(args[0]) >= Poker.minBet && parseInt(args[0]) >= 2*Poker.curBet) {
                 var raiseReturn = playerArray[turn].raise(isTurn(userId), parseInt(args[0]));
+                console.log("Raise: " + args[0] + " | Type: " + typeof args[0]);
+                console.log(typeof parseInt(args[0]));
                 if (raiseReturn === true) {
                     send(`${playerArray[turn].name} raises $${parseInt(args[0])}.`);
                     Poker.pot += parseInt(args[0]);
@@ -615,8 +616,8 @@ pokerBot.on("message", message => {
     if (command === "call") {
         if (game && round > 0) {
             var callReturn = playerArray[turn].call(isTurn(userId));
-            var diffBet = Poker.curBet - Poker.bet;
-            if (callReturn === "true") {
+            var diffBet = Poker.curBet - playerArray[turn].bet;
+            if (callReturn === true) {
                 send(`${playerArray[turn].name} calls $${diffBet}.`);
                 Poker.pot += diffBet;
                 playerArray[turn].bet += diffBet;
