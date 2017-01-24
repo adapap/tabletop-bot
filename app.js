@@ -333,6 +333,7 @@ pokerBot.on("message", message => {
         Poker.foldCount = 0;
         Poker.allinCount = 0;
         Poker.deck = [];
+        Poker.lastCall = 0;
         for (i = 0; i < playerCount; i++) {
             if (playerArray[i].money == 0) {
                 removePlayer(playerArray[i].name);
