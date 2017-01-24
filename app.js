@@ -337,6 +337,7 @@ pokerBot.on("message", message => {
         if (playerCount > 1) {
             playerArray = playerArray.concat(playerArray.splice(0,1));
         }
+        playerCount = playerArray.length;
         balance();
         send("Type **$new** to shuffle and start again");
     }
@@ -739,7 +740,7 @@ pokerBot.on("message", message => {
         pokerBot.destroy();
     }
     
-    if (command === "commands" || "clist") {
+    if (command === "commands" || command === "clist") {
         code("fix", `[Command List]
 $commands/$clist - Display this command list
 $ante - Check the cards dealt to you
