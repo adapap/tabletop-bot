@@ -190,21 +190,6 @@ function shuffle(array) { //Shuffle Cards
 pokerBot.on("ready", () => {
     console.log("Poker Bot v1.0 loaded.");
     pokerBot.user.setGame("$help");
-    var botGuilds = pokerBot.guilds.array();
-    for (i = 0; i < botGuilds.length; i++) {
-        botGuilds[i].defaultChannel.sendEmbed({
-            title: "Hello, I am *PokerBot*!",
-            description: `In Poker, you are dealt 2 cards and must place and call bets.
-To see your cards, you will have to pay the 'ante', an entry bet.
-*Note*: There are no blind bets with this bot.
-Your hand is the best 5 cards that you can play at a time.
-The player with the highest ranking hand wins (see $table).
-To start a new game, add players with $p and type $new to begin!
-
-Type **$help** to see my commands...`,
-            color: colors.red
-        });
-    }
 });
 
 /*================
@@ -348,6 +333,9 @@ pokerBot.on("message", message => {
             playerArray[i].hand = [];
             playerArray[i].handVal = 0;
             playerArray[i].handName = "";
+        }
+        if (playerCount > 1) {
+            playerArray = playerArray.concat(playerArray.splice(0,1));
         }
         balance();
         send("Type **$new** to shuffle and start again");
@@ -750,10 +738,10 @@ pokerBot.on("message", message => {
         send("*PokerBot shutting down...*");
         pokerBot.destroy();
     }
-
-    if (command === "help" || command === "commands") {
+    
+    if (command === "commands" || "clist") {
         code("fix", `[Command List]
-$help/$commands - Display this command list
+$commands/$clist - Display this command list
 $ante - Check the cards dealt to you
 $balance/$bal {player} - Shows the balances of all players of a specific player
 $call - Match a bet that was made through a raise
@@ -761,12 +749,28 @@ $check - Play without raising or folding during a turn
 $draw - Draw a random card from the deck
 $end - Ends the current game
 $fold - Stop playing and lose all money played this game
+$help - Sends the help message to the guild
 $money {start} {min. bet} - Set the starting balance and minimum bet for all players
 $new - Shuffles the deck and starts a new game
 $player/$p [add/del/clr/list] - Add/remove/clear/list players
 $raise - Make a bet that other players need to call
 $restart - Restarts the bot
 $table - Displays a list of hand types in order of rank`);
+    }
+
+    if (command === "help") {
+        message.guild.defaultChannel.sendEmbed({
+            title: "Hello, I am *PokerBot*!",
+            description: `In Poker, you are dealt 2 cards and must place and call bets.
+To see your cards, you will have to pay the 'ante', an entry bet.
+*Note*: There are no blind bets with this bot.
+Your hand is the best 5 cards that you can play at a time.
+The player with the highest ranking hand wins (see $table).
+To start a new game, add players with $p and type $new to begin!
+
+Type **$commands** to see my commands...`,
+            color: colors.red
+        });
     }
     if (command === "table") {
         send("", embed("__Hand Ranks (Highest to Lowest)__", `**Royal Flush** - A:clubs: K:clubs: Q:clubs: J:clubs: 10:clubs:
