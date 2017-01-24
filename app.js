@@ -300,8 +300,8 @@ pokerBot.on("message", message => {
 
     function removePlayer(name) {
         if (findPlayer(name) > -1) {
-            playerArray.splice(name, 1);
-            send(`${name} was removed to the game.`);
+            playerArray.splice(findPlayer(name), 1);
+            send(`${name} was removed from the game.`);
         }
         playerCount = playerArray.length;
     }
