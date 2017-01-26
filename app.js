@@ -115,13 +115,58 @@ cardBot.on("message", message => {
         var userNameArray = message.channel.guild.members.array();
     }
 
-    var code = require("./messageFunc.js").code;
-    var dm = require("./messageFunc.js").dm;
-    var embed = require("./messageFunc.js").embed;
-    var purge = require("./messageFunc.js").purge;
-    var send = require("./messageFunc.js").send;
-    var getUserName = require("./messageFunc.js").getUserName;
-    var isBot = require("./messageFunc.js").isBot;
+    function code(lang, arg) {
+        message.channel.sendCode(lang, arg);
+    }
+
+    function dm(msg, emb) {
+        message.author.send(msg, emb);
+    }
+
+    function embed(titleArg, desc, color) {
+        return {
+            embed: {
+                title: titleArg,
+                description: desc,
+                color: color.replace(/^red$|^green$|^gold$|^black$|^blue$/gi, function(matched) {
+                    return colors[matched];
+                })
+            }
+        };
+    }
+
+    function purge(amount) {
+        if (amount >= 1 && amount < 100) {
+            amount++;
+            message.delete();
+            message.channel.fetchMessages({
+                limit: amount || 10
+            }).then(messages => message.channel.bulkDelete(messages)).catch(console.error);
+        } else {
+            send("Invalid amount of messages. Must be between 1-99.");
+        }
+    }
+
+    function send(msg, embed) {
+        message.channel.send(msg, embed);
+    }
+
+    function getUserName(id) {
+        var userIndex = userNameArray.map(function(a) {
+            return `<@${a.user.id}>`;
+        }).indexOf(id);
+        return userNameArray[userIndex].user.username;
+    }
+    
+    function isBot(id) {
+        var botArray = userNameArray.map(function(a) {
+            return a.user.bot;
+        });
+        var botIndex = userNameArray.map(function(a) {
+            return `<@${a.user.id}>`;
+        }).indexOf(id);
+        return botArray[botIndex];
+    }
     
     /*Game Functions*/
     var balance = require("./gameFunc.js").balance;
