@@ -1,16 +1,32 @@
 module.exports = {
-    shorthand: {
-        T: "10",
-        c: ":clubs:",
-        d: ":diamonds:",
-        h: ":hearts:",
-        s: ":spades:"
+    blackjackVal: {
+        2: 2,
+        3: 3,
+        4: 4,
+        5: 5,
+        6: 6,
+        7: 7,
+        8: 8,
+        9: 9,
+        T: 10,
+        J: 10,
+        Q: 10,
+        K: 10,
+        A: 11
     },
+    shorthand: {
+            T: "10",
+            c: ":clubs:",
+            d: ":diamonds:",
+            h: ":hearts:",
+            s: ":spades:"
+        },
     colors: {
         red: "15158332",
         green: "2667619",
         blue: "3447003",
         gold: "15844367",
+        white: "16777215",
         black: "1"
     },
     fullname: {
