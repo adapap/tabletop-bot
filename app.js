@@ -767,4 +767,4 @@ To learn more about how to play, check out the commands with **$commands**!`,
     }
 });
 
-cardBot.login("MjcxMDgyOTE0NTQyOTExNDkw.C2E3GQ.YPOqT8xC60_cCrxZCoQ-ZrJuPiE");
+cardBot.login("TOKEN");
