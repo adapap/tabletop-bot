@@ -1,8 +1,8 @@
+git+https://github.com/Rapptz/discord.py@rewrite
 aiohttp==3.3.2
 async-timeout==3.0.0
 attrs==18.1.0
 chardet==3.0.4
-discord.py==1.0.0a1510+g8ccb98d
 idna==2.7
 idna-ssl==1.1.0
 multidict==4.3.1
