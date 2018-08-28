@@ -8,7 +8,7 @@ class VotingCard(Card):
 
 class PolicyCard(Card):
     def __init__(self, *, img_src: str, card_type: str):
-        super().__init__(img_src)
+        super().__init__(img_src=img_src)
         self.card_type = card_type
 
 class IdentityCard(Card):
