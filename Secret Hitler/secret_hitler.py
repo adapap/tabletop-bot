@@ -52,7 +52,7 @@ class SecretHitler(Game):
 
 
 	"""
-	Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now
+	Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now
 	"""
 	def get_enacted_policy(self, chosen_policies):
 		return random.choice(chosen_policies)
