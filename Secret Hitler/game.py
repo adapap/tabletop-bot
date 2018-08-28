@@ -2,7 +2,7 @@ from player import Player
 from utils import EmbedColor
 
 class Game:
-    def __init__(self, name: str):
+    def __init__(self, *, name: str):
         self.name = name
         self.players = []
         self.channel = None
@@ -17,7 +17,7 @@ class Game:
     """
     An embed constructor which sends a message to the channel
     """
-    def send_message(self, message: str, color: int=EmbedColor.INFO.value, channel: str='public'):
+    def send_message(self, message: str, *, color: int=EmbedColor.INFO, channel: str='public'):
         print(f'({channel}) {message}')
         pass
 

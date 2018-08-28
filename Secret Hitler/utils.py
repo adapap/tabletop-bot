@@ -1,6 +1,4 @@
-from enum import Enum
-
-class EmbedColor(Enum):
+class EmbedColor:
     ERROR = 0
     WARN = 1
     INFO = 2
