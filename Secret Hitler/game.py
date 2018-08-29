@@ -30,4 +30,5 @@ class Game:
             self.players.append(player)
             self.send_message(f'{discord_member} joined the game.')
         else:
-            self.send_message(f'{discord_member} is already in the game.')
+            self.send_message(f'{discord_member} is already in the game.'
+

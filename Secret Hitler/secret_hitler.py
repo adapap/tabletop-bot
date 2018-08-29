@@ -8,6 +8,7 @@ from random import shuffle, choice, sample
 
 # Temporary modules
 from string import ascii_uppercase as alphabet
+from time import sleep
 
 
 class SecretHitler(Game):
@@ -39,6 +40,7 @@ class SecretHitler(Game):
 		self.prev_president = None
 		self.prev_chancellor = None
 		self.nominee = None
+		self.previously_investigated = []
 		self.generate_deck()
 
 		self.rounds = 0
@@ -64,8 +66,8 @@ class SecretHitler(Game):
 	"""
 	Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
 	"""
-	def choose_chancellor(self, *, president):
-		valid = set(self.players) - set([president])
+	def choose_chancellor(self):
+		valid = set(self.players) - set([self.president])
 		if self.prev_president:
 			valid -= set([self.prev_president])
 		if self.prev_chancellor:
@@ -90,6 +92,27 @@ class SecretHitler(Game):
 	def get_enacted_policy(self, chosen_policies):
 		return choice(chosen_policies)
 
+
+	"""
+	Manages the executive actions that the President must do after a fascist policy is passed
+	"""
+	def executive_action(self):
+		if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2):
+			self.send_message("The President must investigate another player's identity!")
+
+			valid = set(self.players) - set([self.president])
+			for investigated_player in self.previously_investigated:
+				valid -= set([investigated_player])
+			suspect = choice(list(valid))
+
+			while not suspect in self.previously_investigated and suspect != self.president:
+				self.send_message("You may not investigate yourself or a previously investigated player")
+				suspect = choice(list(valid))
+
+			
+
+
+
 	"""
 	Handles the turn-by-turn logic of the game
 	"""
@@ -100,10 +123,11 @@ class SecretHitler(Game):
 			self.send_message(f'{president.name} is the President now! They must nominate a Chancellor.')
 
 			# Rewrite this into proper chancellor choosing function
-			self.nominee = self.choose_chancellor(president=president)
-			if nominee == self.prev_president or nominee == self.prev_chancellor:
+			self.nominee = self.choose_chancellor()
+			while nominee == self.prev_president or nominee == self.prev_chancellor:
 				self.send_message('You may not nominate the previous President, previous Chancellor, or yourself!', color=EmbedColor.ERROR)
-				continue
+				self.nominee = self.choose_chancellor()
+				
 
 			message = f'{nominee.name} has been nominated to be the Chancellor!'
 			self.send_message(message)
