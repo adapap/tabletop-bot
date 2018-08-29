@@ -22,6 +22,8 @@ class LinkedList:
         self.head = self.tail = None
         self.length = 0
         self.data_types = set([int])
+        self.cur = None
+        self.looped = False
 
     @property
     def elements(self):
@@ -52,16 +54,14 @@ class LinkedList:
         self.tail.next = self.head
         self.length += 1
 
-    def find(self, key, attr=None):
+    def find(self, value, attr=None):
         """
         Finds an element with an attribute equal to key
         """
         if self.head is None:
             return None
-        elem = None
-        for i in range(self.length):
-            elem = self.head if elem is None else elem.next
-            if i == key or (attr is not None and getattr(elem.data, attr) == key):
+        for elem in self:
+            if (not attr and elem.data == value) or (attr and getattr(elem.data, attr) == value):
                 return elem
         return None
 
@@ -97,21 +97,28 @@ class LinkedList:
             node = node.next
         return False
 
-    def __getitem__(self, index):
+    def __getitem__(self, sliced):
         """
         Adds indexing support
         """
-        if type(index) is not int:
-            raise TypeError(f'Index for LinkedList must be of type int')
-        if type(index) is int:
-            if index < 0:
-                index %= self.length
-            if index >= self.length:
-                raise IndexError(f'Index {index} out of range for LinkedList')
-        return self.find(index)
+        return self.elements[sliced]
+
+    def __iter__(self):
+        self.cur = self.head
+        return self
 
     def __len__(self):
         return self.length
+
+    def __next__(self):
+        if self.looped:
+            self.looped = False
+            raise StopIteration
+        cur = self.cur
+        self.cur = cur.next
+        if self.cur == self.head:
+            self.looped = True
+        return cur
 
     def __repr__(self):
         rep = ''

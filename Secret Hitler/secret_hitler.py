@@ -59,7 +59,7 @@ class SecretHitler(Game):
 		"""
 		Returns the next player in the game
 		"""
-		self.player = self.player.next
+		self.player = self.players.find(self.player).next
 		return self.player.data
 
 	def add_player(self, discord_member):
