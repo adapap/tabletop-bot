@@ -24,6 +24,8 @@ class SecretHitler(Game):
 		self.players = LinkedList()
 		for x in alphabet[:5]:
 			self.add_player(x)
+		self.player_list = (lambda: self.players.elements)()
+		# Starting player is the first one that joined
 		self.player = self.players[-1]
 
 		# Keeps track of enacted policies
@@ -67,7 +69,7 @@ class SecretHitler(Game):
 	    Adds a player to the current game
 	    """
 	    if not self.players.find(discord_member, attr='name'):
-	        player = Player(name=discord_member, dm_channel='dm_' + discord_member)
+	        player = Player(name=discord_member, dm_channel='dm - ' + discord_member)
 	        self.players.add(player)
 	        self.send_message(f'{discord_member} joined the game.')
 	    else:
@@ -86,20 +88,19 @@ class SecretHitler(Game):
 		# There are 6 fascist policies and 11 liberal policies in a deck
 		# If the deck is emptied, reshuffle the deck without the board cards
 		self.policy_deck = []
-		self.policy_deck.extend([PolicyCard(card_type="fascist", img_src="")] * (11 - self.board['fascist']))
-		self.policy_deck.extend([PolicyCard(card_type="liberal", img_src="")] * (6 - self.board['liberal']))
+		self.policy_deck.extend([PolicyCard(card_type='fascist', img_src='')] * (11 - self.board['fascist']))
+		self.policy_deck.extend([PolicyCard(card_type='liberal', img_src='')] * (6 - self.board['liberal']))
 		shuffle(self.policy_deck)
 
 	def choose_chancellor(self):
 		"""
 		Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
 		"""
-		valid = set(self.players.elements) - set([self.president])
-		if self.prev_president:
-			valid -= set([self.prev_president])
-		if self.prev_chancellor:
-			valid -= set([self.prev_chancellor])
-		return choice(list(valid))
+		valid = []
+		for player in self.player_list:
+			if player != self.president and not player.had_position:
+				valid.append(player)
+		return choice(valid)
 
 	def get_voting_results(self):
 		"""
@@ -124,7 +125,7 @@ class SecretHitler(Game):
 		Manages the executive actions that the President must do after a fascist policy is passed
 		"""
 		if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2):
-			self.send_message("The President must investigate another player's identity!")
+			self.send_message('The President must investigate another player\'s identity!')
 
 			valid = set(self.players) - set([self.president])
 			for investigated_player in self.previously_investigated:
@@ -132,7 +133,7 @@ class SecretHitler(Game):
 			suspect = choice(list(valid))
 
 			while not suspect in self.previously_investigated and suspect != self.president:
-				self.send_message("You may not investigate yourself or a previously investigated player")
+				self.send_message('You may not investigate yourself or a previously investigated player')
 				suspect = choice(list(valid))
 
 
@@ -150,11 +151,8 @@ class SecretHitler(Game):
 			while self.nominee == self.prev_president or self.nominee == self.prev_chancellor:
 				self.send_message('You may not nominate the previous President, previous Chancellor, or yourself!', color=EmbedColor.ERROR)
 				self.nominee = self.choose_chancellor()
-				
 
-			message = f'{self.nominee.name} has been nominated to be the Chancellor!'
-			self.send_message(message)
-			######
+			self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
 
 		if self.stage == 'election':
 			voting_results = self.get_voting_results()
@@ -203,8 +201,14 @@ class SecretHitler(Game):
 				self.generate_deck()
 				self.send_message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
 
-			self.prev_chancellor = chancellor
-			self.prev_president = president
+			# Reset player properties
+			for player in self.player_list:
+				player.last_chancellor = False
+				player.last_president = False
+				player.voted = False
+			
+			chancellor.last_chancellor = True
+			president.last_president = True
 
 			self.rounds += 1
 			self.next_stage()
@@ -225,7 +229,7 @@ class SecretHitler(Game):
 		# Indicate what identity a player has and inform related parties
 		fascists = []
 		hitler = None
-		for player, identity in zip(self.players.elements, identities):
+		for player, identity in zip(self.player_list, identities):
 			player.identity = identity
 			if identity == 'Hitler':
 				hitler = player
