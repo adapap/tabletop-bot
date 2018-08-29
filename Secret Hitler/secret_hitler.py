@@ -1,6 +1,6 @@
 from cards import *
 from game import Game
-from utils import EmbedColor
+from utils import EmbedColor, LinkedList
 
 from itertools import cycle
 from random import shuffle, choice, sample
@@ -19,9 +19,12 @@ class SecretHitler(Game):
 		super().__init__(name=name)
 
 		# Adding test players, should replace with a proper player join mechanic
+		# Just add to linkedlist and rewrite all the stuffs...
 		self.players = []
 		for x in alphabet[:5]:
 			self.add_player(x)
+		self._players = LinkedList(self.players)
+		self.player = self._players.head
 
 		# Keeps track of enacted policies
 		self.board = {
@@ -32,7 +35,7 @@ class SecretHitler(Game):
 		# Create an iterator that cycles every game loop (when action is valid)
 		# For example, "election" can be a stage
 		self.stages = cycle(['nomination', 'election', 'president', 'chancellor', 'summary'])
-		self.next_stage = lambda: next(stages)
+		self.next_stage = lambda: next(self.stages)
 		self.stage = self.next_stage()
 		
 		self.president = None
@@ -45,17 +48,30 @@ class SecretHitler(Game):
 
 		self.rounds = 0
 
-	"""
-	Property which gives number of policy cards in the deck
-	"""
 	@property
 	def policy_count(self):
+		"""
+		Property which gives number of policy cards in the deck
+		"""
 		return len(self.policy_deck)
 
-	"""
-	Generates a deck of policy cards
-	"""
+	def next_player(self):
+		"""
+		Returns the next player in the game
+		"""
+		self.player = self.player._next
+		return self.player
+
+	def remove_player(self, name: str):
+		"""
+		Removes a player from the game cycle
+		"""
+		self.players.remove(name)
+
 	def generate_deck(self):
+		"""
+		Generates a deck of policy cards
+		"""
 		# There are 6 fascist policies and 11 liberal policies in a deck
 		# If the deck is emptied, reshuffle the deck without the board cards
 		self.policy_deck = []
@@ -63,10 +79,10 @@ class SecretHitler(Game):
 		self.policy_deck.extend([PolicyCard(card_type="liberal", img_src="")] * (6 - self.board['liberal']))
 		shuffle(self.policy_deck)
 
-	"""
-	Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
-	"""
 	def choose_chancellor(self):
+		"""
+		Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
+		"""
 		valid = set(self.players) - set([self.president])
 		if self.prev_president:
 			valid -= set([self.prev_president])
@@ -74,10 +90,10 @@ class SecretHitler(Game):
 			valid -= set([self.prev_chancellor])
 		return choice(list(valid))
 
-	"""
-	Handles getting voting results. Is a dummy function that just returns true/false right now
-	"""
 	def get_voting_results(self):
+		"""
+		Handles getting voting results. Is a dummy function that just returns true/false right now
+		"""
 		return choice((True, False,))
 
 	"""
@@ -86,17 +102,16 @@ class SecretHitler(Game):
 	def pick_chosen_policies(self, policies):
 		return sample(policies, 2)
 
-	"""
-	Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now
-	"""
 	def get_enacted_policy(self, chosen_policies):
+		"""
+		Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now
+		"""
 		return choice(chosen_policies)
 
-
-	"""
-	Manages the executive actions that the President must do after a fascist policy is passed
-	"""
-	def executive_action(self):
+	def executive_action(self):	
+		"""
+		Manages the executive actions that the President must do after a fascist policy is passed
+		"""
 		if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2):
 			self.send_message("The President must investigate another player's identity!")
 
@@ -109,18 +124,15 @@ class SecretHitler(Game):
 				self.send_message("You may not investigate yourself or a previously investigated player")
 				suspect = choice(list(valid))
 
-			
 
-
-
-	"""
-	Handles the turn-by-turn logic of the game
-	"""
 
 	def tick(self):
+		"""
+		Handles the turn-by-turn logic of the game
+		"""
 		if self.stage == 'nomination':
 			self.president = self.next_player()
-			self.send_message(f'{president.name} is the President now! They must nominate a Chancellor.')
+			self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
 
 			# Rewrite this into proper chancellor choosing function
 			self.nominee = self.choose_chancellor()
@@ -161,20 +173,20 @@ class SecretHitler(Game):
 			enacted_policy = choice(candidate_policies)
 
 			self.board[enacted_policy.card_type] += 1
-			self.send_message(f'A {enacted_policy.card_type} policy was passed!')
+			self.send_message(f'A {enacted_policy.card_type} policy was passed!', color=EmbedColor.SUCCESS)
 
 		if self.stage == 'summary':
 			if self.board['liberal'] == 5:
-				self.send_message('Five liberal policies have been passed, and the Liberals win!')
+				self.send_message('Five liberal policies have been passed, and the Liberals win!', color=EmbedColor.SUCCESS)
 				return
 
 			if self.board['fascist'] == 6:
-				self.send_message('Six liberal policies have been passed, and the Fascists win!')
+				self.send_message('Six liberal policies have been passed, and the Fascists win!', color=EmbedColor.SUCCESS)
 				return
 
 			# Redundant message, show image of board progress
 			message = f'{self.board["liberal"]} liberal policies and {self.board["fascist"]} fascist policies have been passed.'
-			self.send_message(message)
+			self.send_message(message, color=EmbedColor.INFO)
 
 			if self.policy_count < 3:
 				self.generate_deck()
@@ -188,11 +200,10 @@ class SecretHitler(Game):
 			self.tick()
 			print('\n' * 3)
 
-
-	"""
-	Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)
-	"""
 	def assign_identities(self):
+		"""
+		Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)
+		"""
 		identities = ['Hitler']
 		# Add appropriate fascists depending on player count
 		identities.extend(['Fascist'] * ((self.player_count - 3) // 2))
@@ -222,19 +233,14 @@ class SecretHitler(Game):
 			message = f'{fascists[0].name} is a fascist'
 			self.send_message(message, channel=hitler.dm_channel)
 
-
-	"""
-	Checks if the game can start and assigns roles to players
-	"""
 	def start_game(self):
+		"""
+		Checks if the game can start and assigns roles to players
+		"""
 		if not 5 <= self.player_count <= 10:
-			self.send_message("You must have between 5-10 players to start the game.", EmbedColor.ERROR)
+			self.send_message('You must have between 5-10 players to start the game.', EmbedColor.ERROR)
 			return
 		self.assign_identities()
-
-		# Creates an iterator which cycles through the next player
-		self.player_cycle = cycle(self.players)
-		self.next_player = lambda: next(self.player_cycle)
 
 		# Runs the current stage of the game
 		self.tick()

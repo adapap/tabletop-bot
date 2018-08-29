@@ -54,18 +54,4 @@ class LinkedList:
 			rep += f'[{n.data}]'
 			n = n._next
 		rep += f'[{n.data}]'
-
 		return rep
-
-
-x = LinkedList([1,2,3,4,5])
-print(x)
-x.remove(-1)
-print(x)
-x.remove(4)
-print(x)
-x.remove(5)
-print(x)
-
-
-
