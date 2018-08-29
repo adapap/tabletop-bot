@@ -3,3 +3,6 @@ class Player:
         self.name = name
         self.dm_channel = dm_channel
         self.identity = None
+
+    def __repr__(self):
+        return f'<Player: {self.name}>'

@@ -1,4 +1,3 @@
-from player import Player
 from utils import EmbedColor
 
 class Game:
@@ -7,8 +6,8 @@ class Game:
     """
     def __init__(self, *, name: str):
         self.name = name
-        self.players = []
         self.channel = None
+        self.players = []
 
     @property
     def player_count(self):
@@ -23,14 +22,3 @@ class Game:
         """
         print(f'({channel}) {message}')
         pass
-
-    def add_player(self, discord_member):
-        """
-        Adds a player to the current game
-        """
-        if discord_member not in self.players:
-            player = Player(name=discord_member, dm_channel='dm_' + discord_member)
-            self.players.append(player)
-            self.send_message(f'{discord_member} joined the game.')
-        else:
-            self.send_message(f'{discord_member} is already in the game.')

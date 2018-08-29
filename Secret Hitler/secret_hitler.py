@@ -1,5 +1,6 @@
 from cards import *
 from game import Game
+from player import Player
 from utils import EmbedColor, LinkedList
 
 from itertools import cycle
@@ -20,11 +21,10 @@ class SecretHitler(Game):
 
 		# Adding test players, should replace with a proper player join mechanic
 		# Just add to linkedlist and rewrite all the stuffs...
-		self.players = []
+		self.players = LinkedList()
 		for x in alphabet[:5]:
 			self.add_player(x)
-		self._players = LinkedList(self.players)
-		self.player = self._players.head
+		self.player = self.players[-1]
 
 		# Keeps track of enacted policies
 		self.board = {
@@ -37,7 +37,7 @@ class SecretHitler(Game):
 		self.stages = cycle(['nomination', 'election', 'president', 'chancellor', 'summary'])
 		self.next_stage = lambda: next(self.stages)
 		self.stage = self.next_stage()
-		
+
 		self.president = None
 		self.chancellor = None
 		self.prev_president = None
@@ -59,8 +59,19 @@ class SecretHitler(Game):
 		"""
 		Returns the next player in the game
 		"""
-		self.player = self.player._next
-		return self.player
+		self.player = self.player.next
+		return self.player.data
+
+	def add_player(self, discord_member):
+	    """
+	    Adds a player to the current game
+	    """
+	    if not self.players.find(discord_member, attr='name'):
+	        player = Player(name=discord_member, dm_channel='dm_' + discord_member)
+	        self.players.add(player)
+	        self.send_message(f'{discord_member} joined the game.')
+	    else:
+	        self.send_message(f'{discord_member} is already in the game.')
 
 	def remove_player(self, name: str):
 		"""
@@ -83,7 +94,7 @@ class SecretHitler(Game):
 		"""
 		Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
 		"""
-		valid = set(self.players) - set([self.president])
+		valid = set(self.players.elements) - set([self.president])
 		if self.prev_president:
 			valid -= set([self.prev_president])
 		if self.prev_chancellor:
@@ -96,10 +107,10 @@ class SecretHitler(Game):
 		"""
 		return choice((True, False,))
 
-	"""
-	Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now
-	"""
 	def pick_chosen_policies(self, policies):
+		"""
+		Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now
+		"""
 		return sample(policies, 2)
 
 	def get_enacted_policy(self, chosen_policies):
@@ -136,12 +147,12 @@ class SecretHitler(Game):
 
 			# Rewrite this into proper chancellor choosing function
 			self.nominee = self.choose_chancellor()
-			while nominee == self.prev_president or nominee == self.prev_chancellor:
+			while self.nominee == self.prev_president or self.nominee == self.prev_chancellor:
 				self.send_message('You may not nominate the previous President, previous Chancellor, or yourself!', color=EmbedColor.ERROR)
 				self.nominee = self.choose_chancellor()
 				
 
-			message = f'{nominee.name} has been nominated to be the Chancellor!'
+			message = f'{self.nominee.name} has been nominated to be the Chancellor!'
 			self.send_message(message)
 			######
 
@@ -214,7 +225,7 @@ class SecretHitler(Game):
 		# Indicate what identity a player has and inform related parties
 		fascists = []
 		hitler = None
-		for player, identity in zip(self.players, identities):
+		for player, identity in zip(self.players.elements, identities):
 			player.identity = identity
 			if identity == 'Hitler':
 				hitler = player
@@ -248,7 +259,4 @@ class SecretHitler(Game):
 
 if __name__ == "__main__":
 	game = SecretHitler(name='Secret Hitler')
-	# while game.player_count < 3:
-	# 	name = input('Player name: ')
-	# 	game.add_player(name)
 	game.start_game()

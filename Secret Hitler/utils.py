@@ -6,52 +6,120 @@ class EmbedColor:
 
 
 class Node:
-	def __init__(self, data):
-		self.data = data
-		self._next = None
+    def __init__(self, data):
+        self.data = data
+        self.next = None
 
-	def __repr__(self):
-		return f'<Node: {self.data}>'
+    def __repr__(self):
+        return f'<Node: {self.data}>'
 
 
 class LinkedList:
-	def __init__(self, elements: list):
-		self.head = self.tail = Node(elements[0])
-		self.length = 1
-		for e in elements[1:]:
-			self.add(e)
+    """
+    A circular linked list implementation
+    """
+    def __init__(self):
+        self.head = self.tail = None
+        self.length = 0
+        self.data_types = set([int])
 
-	def add(self, node_data):
-		node = Node(node_data)
-		self.tail._next = node
-		self.tail = node
-		self.tail._next = self.head
-		self.length += 1
+    @property
+    def elements(self):
+        """
+        Returns all of the elements in the linked list
+        """
+        elems = []
+        node = self.head
+        if node is None:
+            return []
+        elems.append(node.data)
+        while node.next != self.head:
+            node = node.next
+            elems.append(node.data)
+        return elems
+    
 
-	def remove(self, node_data):
-		node = Node(node_data)
-		n = self.head
-		prev = None
-		while n.data != node.data:
-			prev = n
-			n = n._next
-			if n == self.head:
-				raise IndexError(f'Linked list does not contain {node}')
-		if not prev:
-			self.head = n._next
-			self.tail._next = self.head
-		else:
-			prev._next = n._next
-		self.length -= 1
+    def add(self, node_data):
+        """
+        Adds a node to the tail of the linked list
+        """
+        node = Node(node_data)
+        if self.head is None or self.tail is None:
+            self.head = self.tail = node
+        else:
+            self.tail.next = node
+            self.tail = node
+        self.tail.next = self.head
+        self.length += 1
 
-	def __len__(self):
-		return self.length
+    def find(self, key, attr=None):
+        """
+        Finds an element with an attribute equal to key
+        """
+        if self.head is None:
+            return None
+        elem = None
+        for i in range(self.length):
+            elem = self.head if elem is None else elem.next
+            if i == key or (attr is not None and getattr(elem.data, attr) == key):
+                return elem
+        return None
 
-	def __repr__(self):
-		rep = ''
-		n = self.head
-		while n._next != self.head:
-			rep += f'[{n.data}]'
-			n = n._next
-		rep += f'[{n.data}]'
-		return rep
+    def remove(self, data):
+        """
+        Removes a link from the list
+        """
+        node = Node(data)
+        n = self.head
+        prev = None
+        while n.data != node.data:
+            prev = n
+            n = n.next
+            if n == self.head:
+                raise KeyError(f'Linked list does not contain {node}')
+        if not prev:
+            self.head = n.next
+            self.tail.next = self.head
+        else:
+            prev.next = n.next
+        self.length -= 1
+
+    def __contains__(self, data):
+        """
+        Checks if an element is in the list
+        """
+        if self.head is None:
+            return False
+        node = self.head
+        while node.next is not self.head:
+            if node.data == data:
+                return True
+            node = node.next
+        return False
+
+    def __getitem__(self, index):
+        """
+        Adds indexing support
+        """
+        if type(index) is not int:
+            raise TypeError(f'Index for LinkedList must be of type int')
+        if type(index) is int:
+            if index < 0:
+                index %= self.length
+            if index >= self.length:
+                raise IndexError(f'Index {index} out of range for LinkedList')
+        return self.find(index)
+
+    def __len__(self):
+        return self.length
+
+    def __repr__(self):
+        rep = ''
+        if self.head is None:
+            return '[]'
+        n = self.head
+        while n.next != self.head:
+            rep += f'[{n.data}]'
+            n = n.next
+        rep += f'[{n.data}]'
+        return rep
