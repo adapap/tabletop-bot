@@ -4,6 +4,7 @@ class Player:
         self.dm_channel = dm_channel
         self.identity = None
         self.voted = False
+        self.veto = False
         self.last_president = False
         self.last_chancellor = False
         self.investigated = False
