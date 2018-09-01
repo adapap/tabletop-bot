@@ -1,29 +1,24 @@
-class Game:
-    def __init__(self, name: str):
-        self.name = name
-        self.players = []
-        self.channel = None
+from utils import EmbedColor
 
+class Game:
     """
-    Returns the number of players in the game
+    Game object for each game running through Discord
     """
+    def __init__(self, *, name: str):
+        self.name = name
+        self.channel = None
+        self.players = []
+
     @property
     def player_count(self):
-        return len(self.player_count)
+        """
+        Returns the number of players in the game
+        """
+        return len(self.players)
 
-    """
-    An embed constructor which sends a message to the channel
-    """
-    def send_message(self, message: str, color: int=EmbedColor.INFO.value):
-        print(message)
+    def send_message(self, message: str, *, color: int=EmbedColor.INFO, channel: str='public'):
+        """
+        An embed constructor which sends a message to the channel
+        """
+        print(f'({channel}) {message}')
         pass
-
-    """
-    Adds a player to the current game
-    """
-    def add_player(self, discord_member):
-        if discord_member not in self.players:
-            self.players.append(discord_member)
-            self.send_message(f'{discord_member} joined the game.')
-        else:
-            self.send_message(f'{discord_member} is already in the game.')

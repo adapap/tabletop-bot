@@ -1,5 +1,4 @@
 from cards import *
-from game import Game
 from player import Player
 from utils import EmbedColor, LinkedList
 
@@ -10,6 +9,15 @@ from random import shuffle, choice, sample
 # Temporary modules
 from string import ascii_uppercase as alphabet
 from time import sleep
+
+if __name__ == '__main__':
+    import os, sys
+    # get an absolute path to the directory that contains mypackage
+    parent = os.path.dirname(os.path.join(os.getcwd(), __file__))
+    sys.path.append(os.path.normpath(os.path.join(parent, '..', '..')))
+    from cardbot.game import Game
+else:
+    from ..game import Game
 
 
 class SecretHitler(Game):
@@ -368,7 +376,6 @@ class SecretHitler(Game):
 
         # Runs the current stage of the game
         self.tick()
-
 
 if __name__ == "__main__":
     game = SecretHitler(name='Secret Hitler')
