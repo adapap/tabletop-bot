@@ -1,23 +1,24 @@
-from cards import *
-from player import Player
-from utils import EmbedColor, LinkedList
+from .cards import *
+from .player import Player
+from .utils import EmbedColor, LinkedList
 
 from itertools import cycle
 from random import shuffle, choice, sample
-# import packages from parent dir
 
 # Temporary modules
 from string import ascii_uppercase as alphabet
 from time import sleep
 
-if __name__ == '__main__':
-    import os, sys
-    # get an absolute path to the directory that contains mypackage
-    parent = os.path.dirname(os.path.join(os.getcwd(), __file__))
-    sys.path.append(os.path.normpath(os.path.join(parent, '..', '..')))
-    from cardbot.game import Game
-else:
-    from ..game import Game
+print(__name__)
+
+# if __name__ == '__main__':
+#     import os, sys
+#     # get an absolute path to the directory that contains mypackage
+#     parent = os.path.dirname(os.path.join(os.getcwd(), __file__))
+#     sys.path.append(os.path.normpath(os.path.join(parent, '..', '..')))
+#     from cardbot.game import Game
+# else:
+#     from ..game import Game
 
 
 class SecretHitler(Game):
