@@ -4,8 +4,7 @@ class Game:
     """
     Game object for each game running through Discord
     """
-    def __init__(self, *, name: str):
-        self.name = name
+    def __init__(self):
         self.channel = None
         self.players = []
 

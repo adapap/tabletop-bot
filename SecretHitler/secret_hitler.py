@@ -1,6 +1,12 @@
+# Base Modules
 from .cards import *
 from .player import Player
-from .utils import EmbedColor, LinkedList
+
+# Parent Modules
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from game import Game
+from utils import EmbedColor, LinkedList
 
 from itertools import cycle
 from random import shuffle, choice, sample
@@ -9,24 +15,14 @@ from random import shuffle, choice, sample
 from string import ascii_uppercase as alphabet
 from time import sleep
 
-print(__name__)
-
-# if __name__ == '__main__':
-#     import os, sys
-#     # get an absolute path to the directory that contains mypackage
-#     parent = os.path.dirname(os.path.join(os.getcwd(), __file__))
-#     sys.path.append(os.path.normpath(os.path.join(parent, '..', '..')))
-#     from cardbot.game import Game
-# else:
-#     from ..game import Game
-
 
 class SecretHitler(Game):
     """
     Secret Hitler is a card game...
     """
-    def __init__(self, *, name: str):
-        super().__init__(name=name)
+    def __init__(self):
+        super().__init__()
+        self.name = 'Secret Hitler'
 
         # Adding test players, should replace with a proper player join mechanic
         # Just add to linkedlist and rewrite all the stuffs...
