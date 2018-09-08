@@ -17,9 +17,7 @@ from time import sleep
 
 
 class SecretHitler(Game):
-    """
-    Secret Hitler is a card game...
-    """
+    """Secret Hitler is a card game."""
     def __init__(self):
         super().__init__()
         self.name = 'Secret Hitler'
@@ -61,28 +59,23 @@ class SecretHitler(Game):
 
     @property
     def player_list(self):
+        """Property that returns a list of players."""
         return self.players.elements
 
 
     @property
     def policy_count(self):
-        """
-        Property which gives number of policy cards in the deck
-        """
+        """Property which gives number of policy cards in the deck."""
         return len(self.policy_deck)
 
     @property
     def next_player(self):
-        """
-        Returns the next player in the game
-        """
+        """Returns the next player in the game."""
         self.player = self.player.next
         return self.player.data
 
     def add_player(self, discord_member):
-        """
-        Adds a player to the current game
-        """
+        """Adds a player to the current game."""
         if not self.players.find(discord_member, attr='name'):
             player = Player(name=discord_member, dm_channel='dm - ' + discord_member)
             self.players.add(player)
@@ -91,15 +84,12 @@ class SecretHitler(Game):
             self.send_message(f'{discord_member} is already in the game.')
 
     def remove_player(self, name: str):
-        """
-        Removes a player from the game cycle
-        """
+        """Removes a player from the game cycle."""
         self.players.remove(name)
 
     def generate_deck(self):
-        """
-        Generates a deck of policy cards
-        """
+        """Generates a deck of policy cards."""
+
         # There are 6 fascist policies and 11 liberal policies in a deck
         # If the deck is emptied, reshuffle the deck without the board cards
         self.policy_deck = []
@@ -110,6 +100,7 @@ class SecretHitler(Game):
 
     @property  
     def valid_chancellors(self):
+        """Returns a list of valid chancellor nominees."""
         valid = []
         for player in self.player_list:
             if player != self.president and not player.last_chancellor and not (player.last_president and self.player_count > 5):
@@ -117,37 +108,27 @@ class SecretHitler(Game):
         return valid
 
     def choose_chancellor(self):
-        """
-        Handles nominating a chancellor. Is a dummy function that just chooses a random player right now
-        """
+        """Handles nominating a chancellor. Is a dummy function that just chooses a random player right now."""
         valid = self.valid_chancellors
         return choice(valid)
 
     def get_voting_results(self):
-        """
-        Handles getting voting results. Is a dummy function that just returns true/false right now
-        """
+        """Handles getting voting results. Is a dummy function that just returns true/false right now."""
         return choice([True, False])
 
     def pick_chosen_policies(self, policies):
-        """
-        Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now
-        """
+        """Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now."""
         return sample(policies, 2)
 
     def get_enacted_policy(self, chosen_policies):
-        """
-        Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now
-        """
+        """Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now."""
         return choice(chosen_policies)
 
     def wants_to_veto(self):
         return(choice([True, False]))
 
     def executive_action(self): 
-        """
-        Manages the executive actions that the President must do after a fascist policy is passed
-        """
+        """Manages the executive actions that the President must do after a fascist policy is passed."""
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
@@ -207,9 +188,7 @@ class SecretHitler(Game):
         return 0
 
     def tick(self):
-        """
-        Handles the turn-by-turn logic of the game
-        """
+        """Handles the turn-by-turn logic of the game."""
         if self.stage == 'nomination':
             self.president = self.special_president if self.special_election else self.next_player
             self.special_election = False
@@ -330,9 +309,7 @@ class SecretHitler(Game):
            
 
     def assign_identities(self):
-        """
-        Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)
-        """
+        """Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)."""
         identities = ['Hitler']
         # Add appropriate fascists depending on player count
         identities.extend(['Fascist'] * ((self.player_count - 3) // 2))
@@ -363,9 +340,7 @@ class SecretHitler(Game):
             self.send_message(message, channel=hitler.dm_channel)
 
     def start_game(self):
-        """
-        Checks if the game can start and assigns roles to players
-        """
+        """Checks if the game can start and assigns roles to players."""
         if not 5 <= self.player_count <= 10:
             self.send_message('You must have between 5-10 players to start the game.', EmbedColor.ERROR)
             return

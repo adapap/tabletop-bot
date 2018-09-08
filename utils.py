@@ -15,9 +15,7 @@ class Node:
 
 
 class LinkedList:
-    """
-    A circular linked list implementation
-    """
+    """A circular linked list implementation."""
     def __init__(self):
         self.head = self.tail = None
         self.length = 0
@@ -27,9 +25,7 @@ class LinkedList:
 
     @property
     def elements(self):
-        """
-        Returns all of the elements in the linked list
-        """
+        """Returns all of the elements in the linked list."""
         elems = []
         node = self.head
         if node is None:
@@ -42,9 +38,7 @@ class LinkedList:
     
 
     def add(self, node_data):
-        """
-        Adds a node to the tail of the linked list
-        """
+        """Adds a node to the tail of the linked list."""
         node = Node(node_data)
         if self.head is None or self.tail is None:
             self.head = self.tail = node
@@ -55,9 +49,7 @@ class LinkedList:
         self.length += 1
 
     def find(self, value, attr=None):
-        """
-        Finds an element with an attribute equal to key
-        """
+        """Finds an element with an attribute equal to key."""
         if self.head is None:
             return None
         for elem in self:
@@ -66,9 +58,7 @@ class LinkedList:
         return None
 
     def remove(self, data):
-        """
-        Removes a link from the list
-        """
+        """Removes a link from the list."""
         node = Node(data)
         n = self.head
         prev = None
@@ -85,9 +75,7 @@ class LinkedList:
         self.length -= 1
 
     def __contains__(self, data):
-        """
-        Checks if an element is in the list
-        """
+        """Checks if an element is in the list."""
         if self.head is None:
             return False
         node = self.head
@@ -98,9 +86,7 @@ class LinkedList:
         return False
 
     def __getitem__(self, sliced):
-        """
-        Adds indexing support
-        """
+        """Adds indexing support."""
         return self.elements[sliced]
 
     def __iter__(self):

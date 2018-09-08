@@ -8,9 +8,7 @@ from game import Game
 from utils import EmbedColor, LinkedList
 
 class Cardbot:
-    """
-    Handles the setup and instancing of different games
-    """
+    """Handles the setup and instancing of different games."""
     games = {}
     def __init__(self):
         self.active_game = None
@@ -28,24 +26,18 @@ class Cardbot:
 
     @property
     def game_list(self):
-        """
-        Shows a list of all available games
-        """
+        """Shows a list of all available games."""
         return [game for game in self.games.keys()]
 
     def load_game(self, name: str):
-        """
-        Returns the class object for the game
-        """
+        """Returns the class object for the game."""
         if name not in self.game_list:
             raise KeyError(f'Cardbot does not support the game: {name}')
         self.active_game = name
         return self.games[name]()
 
     def to_snake_case(self, s: str):
-        """
-        Converts CamelCase to snake_case
-        """
+        """Converts CamelCase to snake_case."""
         camel_case = [x.group(0).lower() for x in re.finditer(r'.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', s)]
         return '_'.join(camel_case)
 
