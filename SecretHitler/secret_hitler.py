@@ -1,5 +1,6 @@
 # Base Modules
 from .cards import *
+from .commands import command_list
 from .player import Player
 
 # Parent Modules
@@ -21,6 +22,7 @@ class SecretHitler(Game):
     def __init__(self):
         super().__init__()
         self.name = 'Secret Hitler'
+        self.command_list = command_list
 
         # Adding test players, should replace with a proper player join mechanic
         # Just add to linkedlist and rewrite all the stuffs...

@@ -4,6 +4,7 @@ from discord import Embed
 from discord.ext import commands
 
 # Python Lib
+import json
 import os
 import re
 import sys
@@ -53,9 +54,51 @@ class Cardbot:
 bot = commands.Bot(command_prefix='$', description='''A discord tabletop bot.''')
 bot.remove_command('help')
 
+
+def has_role(self, rolename):
+    """Returns a boolean whether a member has a role."""
+    return rolename in [role.name for role in self.roles]
+discord.Member.has_role = has_role
+
+
+@bot.command(aliases=['purge', 'del', 'delete'])
+async def clear(ctx, number=1):
+    """Removes the specified number of messages."""
+    if ctx.author.has_role('Staff'):
+        return
+    number = int(number)
+    await ctx.message.delete()
+    if number > 99:
+        await ctx.send('Must be between 1-99.')
+        await asyncio.sleep(2.5)
+        await ctx.channel.purge(limit=1, check=lambda m: m.author == ctx.author)
+        return
+    await ctx.channel.purge(limit=number)
+
+@bot.event
+async def on_ready():
+    message = 'Logged in as %s.' % bot.user
+    uid_message = 'User id: %s.' % bot.user.id
+    separator = '━' * max(len(message), len(uid_message))
+    print(separator)
+    try:
+        print(message)
+    except:
+        print(message.encode(errors='replace').decode())
+    print(uid_message)
+    print('Prefix:', '$')
+    print(separator)
+    await bot.change_presence(activity=discord.Game(name='Tabletop Bot'))
+
 if __name__ == '__main__':
     cardbot = Cardbot()
     game = cardbot.load_game('SecretHitler')
+    for command in game.command_list:
+        bot.add_command(command)
     # game.start_game()
 
-    token = 'NDg4NTQzNjgxOTYwMzQ1NjAy.Dndvlw.2i0gM_vBt3Wb4oG43K8URxdRKgk'
+    with open('token.json') as file:
+        data = json.loads(file.read())
+        token = data['token']
+
+    bot.run(token)
