@@ -1,9 +1,15 @@
+# Discord
 import discord
+from discord import Embed
+from discord.ext import commands
+
+# Python Lib
 import os
 import re
 import sys
 from importlib import import_module
 
+# Custom
 from game import Game
 from utils import EmbedColor, LinkedList
 
@@ -44,8 +50,12 @@ class Cardbot:
     def __repr__(self):
         return f'<Active Game: {self.active_game}>'
 
+bot = commands.Bot(command_prefix='$', description='''A discord tabletop bot.''')
+bot.remove_command('help')
+
 if __name__ == '__main__':
     cardbot = Cardbot()
-    print(cardbot.game_list)
     game = cardbot.load_game('SecretHitler')
     # game.start_game()
+
+    token = 'NDg4NTQzNjgxOTYwMzQ1NjAy.Dndvlw.2i0gM_vBt3Wb4oG43K8URxdRKgk'
