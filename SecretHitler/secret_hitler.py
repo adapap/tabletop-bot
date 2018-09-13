@@ -1,9 +1,9 @@
 # Base Modules
 from .cards import *
-from .commands import command_list
 from .player import Player
 
 # Parent Modules
+import discord
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from game import Game
@@ -19,16 +19,15 @@ from time import sleep
 
 class SecretHitler(Game):
     """Secret Hitler is a card game."""
+    name = 'Secret Hitler'
     def __init__(self):
         super().__init__()
-        self.name = 'Secret Hitler'
-        self.command_list = command_list
 
         # Adding test players, should replace with a proper player join mechanic
         # Just add to linkedlist and rewrite all the stuffs...
         self.players = LinkedList()
-        for x in alphabet[:8]:
-            self.add_player(x)
+        # for x in alphabet[:8]:
+        #     self.add_player(x)
         # Starting player is the first one that joined
         self.player = self.players.head
 
@@ -76,18 +75,23 @@ class SecretHitler(Game):
         self.player = self.player.next
         return self.player.data
 
-    def add_player(self, discord_member):
+    async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
-        if not self.players.find(discord_member, attr='name'):
-            player = Player(name=discord_member, dm_channel='dm - ' + discord_member)
+        if not self.players.find(discord_member.id, attr='id'):
+            player = Player(member=discord_member)
             self.players.add(player)
-            self.send_message(f'{discord_member} joined the game.')
+            await self.send_message(f'{discord_member} joined the game.')
         else:
-            self.send_message(f'{discord_member} is already in the game.')
+            await self.send_message(f'{discord_member} is already in the game.', color=EmbedColor.WARN)
 
-    def remove_player(self, name: str):
+    async def remove_player(self, discord_member: discord.Member):
         """Removes a player from the game cycle."""
-        self.players.remove(name)
+        player = self.players.find(discord_member.id, attr='id')
+        if not player:
+            await self.send_message(f'You are not in the current game.', color=EmbedColor.ERROR)
+        else:
+            self.players.remove(player)
+            await self.send_message(f'{discord_member} left the game.')
 
     def generate_deck(self):
         """Generates a deck of policy cards."""

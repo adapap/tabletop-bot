@@ -1,7 +1,10 @@
+import discord
+
 class Player:
-    def __init__(self, *, name: str, dm_channel: str):
-        self.name = name
-        self.dm_channel = dm_channel
+    def __init__(self, *, member: discord.Member):
+        self.name = member.display_name
+        self.id = member.id
+        self.dm_channel = member.dm_channel
         self.identity = None
         self.voted = False
         self.veto = False

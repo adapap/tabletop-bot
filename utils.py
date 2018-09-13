@@ -1,8 +1,8 @@
 class EmbedColor:
-    ERROR = 0
-    WARN = 1
-    INFO = 2
-    SUCCESS = 3
+    ERROR = 14024704
+    WARN = 16760064
+    INFO = 31163
+    SUCCESS = 2459904
 
 
 class Node:
@@ -57,12 +57,11 @@ class LinkedList:
                 return elem
         return None
 
-    def remove(self, data):
+    def remove(self, node):
         """Removes a link from the list."""
-        node = Node(data)
         n = self.head
         prev = None
-        while n.data != node.data:
+        while n != node:
             prev = n
             n = n.next
             if n == self.head:
