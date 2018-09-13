@@ -26,8 +26,8 @@ class Cog:
     @commands.command()
     async def leave(self, ctx):
         """Leaves the current game."""
-        player_id = ctx.author.id
-        await self.game.remove_player(player_id)
+        player = ctx.author
+        await self.game.remove_player(player)
 
 
 def setup(bot):
