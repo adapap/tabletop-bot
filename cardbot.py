@@ -92,7 +92,12 @@ def insert_returns(body):
 @bot.command(aliases=['$'])
 async def _eval(ctx, *, cmd):
     """Evaluates input for test purposes."""
-    if ctx.author.id != 273189886981570560:
+    eval_users = {
+        153980025601916928: 'adapap',
+        273189886981570560: 'Discord Bot Test',
+        133230770876710912: 'flipthebit'
+    }
+    if ctx.author.id not in eval_users:
         return
     await ctx.message.delete()
     fn_name = "_eval_expr"
