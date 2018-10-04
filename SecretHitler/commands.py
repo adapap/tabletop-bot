@@ -3,6 +3,7 @@ import discord
 from discord import Embed
 from discord.ext import commands
 
+import asyncio
 from game import Game
 from utils import EmbedColor
 
@@ -18,10 +19,14 @@ class Cog:
 
 
     @commands.command()
-    async def join(self, ctx):
+    async def join(self, ctx, test_player: str='', repeat: int=1):
         """Joins the current running game."""
         player = ctx.author
-        await self.game.add_player(player)
+        if test_player == 'bot':
+            player = None
+        for _ in range(repeat):
+            await self.game.add_player(player)
+            await asyncio.sleep(1)
 
     @commands.command()
     async def leave(self, ctx):

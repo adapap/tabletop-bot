@@ -110,6 +110,7 @@ async def _eval(ctx, *, cmd):
     env = {
         'bot': ctx.bot,
         'discord': discord,
+        'game': bot.cardbot.game,
         'commands': commands,
         'ctx': ctx,
         '__import__': __import__
@@ -131,23 +132,33 @@ async def games(ctx):
     await ctx.send(embed=Embed(title='Games', description=game_list, color=EmbedColor.INFO))
 
 
-@bot.command(aliases=['start'])
+@bot.command(aliases=['load'])
 async def load_game(ctx, *game_name: str):
     """Loads the game for players to join and configures player joining."""
     game_name = ' '.join(game_name)
+    default = ''
+    # DEFAULT GAME
+    if game_name == '':
+        default = '(default) '
+        game_name = 'Secret Hitler'
     name = re.sub(r'\s*', '', game_name)
     if name not in cardbot.games:
         await ctx.send(embed=Embed(title=f'The game {game_name} is not available.', color=EmbedColor.ERROR))
         return
     game = cardbot.load_game(name)
     game.channel = ctx.message.channel
+    assert hasattr(game, 'start_game')
     try:
         bot.load_extension(f'{name}.commands')
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    await ctx.send(embed=Embed(title=f'{game_name} loaded.', color=EmbedColor.SUCCESS))
+    await ctx.send(embed=Embed(title=f'{default}{game_name} loaded.', color=EmbedColor.SUCCESS))
 
+@bot.command(aliases=['start'])
+async def start_game(ctx):
+    """Starts the current game through the game's start_game method."""
+    await cardbot.game.start_game()
 
 @bot.event
 async def on_ready():

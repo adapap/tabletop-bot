@@ -3,6 +3,7 @@ from .cards import *
 from .player import Player
 
 # Parent Modules
+import asyncio
 import discord
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,8 +29,6 @@ class SecretHitler(Game):
         self.players = LinkedList()
         # for x in alphabet[:8]:
         #     self.add_player(x)
-        # Starting player is the first one that joined
-        self.player = self.players.head
 
         # Keeps track of enacted policies
         self.board = {
@@ -77,12 +76,12 @@ class SecretHitler(Game):
 
     async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
-        if not self.players.find(discord_member.id, attr='id'):
-            player = Player(member=discord_member)
+        player = Player(member=discord_member)
+        if discord_member is None or not self.players.find(discord_member.id, attr='id'):
             self.players.add(player)
-            await self.send_message(f'{discord_member} joined the game.')
+            await self.send_message(f'{player.name} joined the game.')
         else:
-            await self.send_message(f'{discord_member} is already in the game.', color=EmbedColor.WARN)
+            await self.send_message(f'{player.name} is already in the game.', color=EmbedColor.WARN)
 
     async def remove_player(self, discord_member: discord.Member):
         """Removes a player from the game cycle."""
@@ -133,12 +132,12 @@ class SecretHitler(Game):
     def wants_to_veto(self):
         return(choice([True, False]))
 
-    def executive_action(self): 
+    async def executive_action(self): 
         """Manages the executive actions that the President must do after a fascist policy is passed."""
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
-            self.send_message('The President must investigate another player\'s identity!')
+            await self.send_message('The President must investigate another player\'s identity!')
 
             # Should be replaced with actual choosing procedure
             valid = set(self.player_list) - set([self.president])
@@ -147,7 +146,7 @@ class SecretHitler(Game):
             suspect = choice(list(valid))
 
             while suspect in self.previously_investigated or suspect == self.president:
-                self.send_message('You may not investigate yourself or a previously investigated player!', color=EmbedColor.ERROR)
+                await self.send_message('You may not investigate yourself or a previously investigated player!', color=EmbedColor.ERROR)
                 suspect = choice(list(valid))
 
             self.previously_investigated.append(suspect)
@@ -155,16 +154,16 @@ class SecretHitler(Game):
             if suspect_role == 'Hitler':
                 suspect_role = 'Fascist'
 
-            self.send_message(f'{suspect.name} is a {suspect_role}', channel=self.president.dm_channel)
+            await self.send_message(f'{suspect.name} is a {suspect_role}', channel=self.president.dm_channel, footer=self.president.name)
 
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
-            self.send_message('The President will now peek at the top three policies in the deck!')
-            self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}', channel=self.president.dm_channel)
+            await self.send_message('The President will now peek at the top three policies in the deck!')
+            await self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}', channel=self.president.dm_channel)
 
         # TODO: Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count > 7:
-            self.send_message('The President must choose another player to be President!')
+            await self.send_message('The President must choose another player to be President!')
             valid = set(self.player_list) - set([self.president])
             nominee = choice(list(valid))
             while nominee == self.president:
@@ -175,40 +174,41 @@ class SecretHitler(Game):
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
-            self.send_message('The President must now execute a player!')
+            await self.send_message('The President must now execute a player!')
 
             # Should be replaced with actual choosing procedure
             valid = set(self.player_list) - set([self.president])
             victim = choice(list(valid))
 
             while victim == self.president:
-                self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
+                await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
                 victim = choice(list(valid))
 
             self.players.remove(victim)
             if victim.identity == 'Hitler':
-                self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+                await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
                 return -1
-            self.send_message(f'{victim.name} was executed.')
+            await self.send_message(f'{victim.name} was executed.')
 
         return 0
 
-    def tick(self):
+    async def tick(self):
         """Handles the turn-by-turn logic of the game."""
+        await asyncio.sleep(1)
         if self.stage == 'nomination':
             self.president = self.special_president if self.special_election else self.next_player
             self.special_election = False
-            self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
+            await self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
 
             # Rewrite this into proper chancellor choosing function
             self.nominee = self.choose_chancellor()
             while self.nominee == self.prev_president or self.nominee == self.prev_chancellor:
-                self.send_message('This player is ineligible to be nominated as Chancellor. Please choose another chancellor.', color=EmbedColor.ERROR)
+                await self.send_message('This player is ineligible to be nominated as Chancellor. Please choose another chancellor.', color=EmbedColor.ERROR)
                 self.nominee = self.choose_chancellor()
 
-            self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
+            await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
             self.stage = self.next_stage()
-            self.tick()
+            await self.tick()
 
         elif self.stage == 'election':
             voting_results = self.get_voting_results()
@@ -216,83 +216,84 @@ class SecretHitler(Game):
             if voting_results:
                 self.chancellor_rejections = 0
                 self.chancellor = self.nominee
-                self.send_message('The Chancellor was voted in!', color=EmbedColor.SUCCESS)
+                await self.send_message('The Chancellor was voted in!', color=EmbedColor.SUCCESS)
                 if self.board['fascist'] >= 3 and self.chancellor.identity == 'Hitler':
                     message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler, and with 3 or more fascist policies in place, the Fascists win!'
-                    self.send_message(message, color=EmbedColor.ERROR)
+                    await self.send_message(message, color=EmbedColor.ERROR)
                 self.stage = self.next_stage()
-                self.tick()
+                await self.tick()
             else:
                 self.chancellor_rejections += 1
-                self.send_message('The Chancellor was voted down!', color=EmbedColor.WARN)
+                await self.send_message('The Chancellor was voted down!', color=EmbedColor.WARN)
                 for _ in range(3):
                     self.stage = self.next_stage()
-                self.tick()
+                await self.tick()
 
         elif self.stage == 'president':
             policies = [self.policy_deck.pop() for _ in range(3)]
             message = '<' + ', '.join([policy.card_type.title() for policy in policies]) + '> Pick 2 policies to send to the Chancellor.'
-            self.send_message(message, channel=self.president.dm_channel)
+            await self.send_message(message, channel=self.president.dm_channel, footer=self.president.name)
 
             self.candidate_policies = self.pick_chosen_policies(policies)
             message = '<' + ', '.join([policy.card_type.title() for policy in self.candidate_policies]) + '> Choose a policy to enact.'
-            self.send_message(message, channel=self.chancellor.dm_channel)
+            await self.send_message(message, channel=self.chancellor.dm_channel, footer=self.chancellor.name)
             self.stage = self.next_stage()
-            self.tick()
+            await self.tick()
 
         elif self.stage == 'chancellor':
             if self.board['fascist'] >= 5:
-                self.send_message("The Chancellor may choose to invoke his veto power and discard both policies.")
+                await self.send_message("The Chancellor may choose to invoke his veto power and discard both policies.")
                 self.chancellor.veto = choice([True, False])
                 if self.chancellor.veto:
-                    self.send_message("The President must concur in order to discard both policies.")
+                    await self.send_message("The President must concur in order to discard both policies.")
                     self.president.veto = choice([True, False])
                     if self.president.veto:
-                        self.send_message("The veto is successful, and both policies have been discarded.")
+                        await self.send_message("The veto is successful, and both policies have been discarded.")
                         self.stage = self.next_stage()
-                        self.tick()
+                        await self.tick()
                         return
                     else:
-                        self.send_message("The veto fails!", color=EmbedColor.WARN)
+                        await self.send_message("The veto fails!", color=EmbedColor.WARN)
 
             enacted_policy = choice(self.candidate_policies)
 
             self.board[enacted_policy.card_type] += 1
-            self.send_message(f'A {enacted_policy.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+            await self.send_message(f'A {enacted_policy.card_type} policy was passed!', color=EmbedColor.SUCCESS)
 
             if enacted_policy.card_type == 'fascist':
                 self.do_exec_act = True
             self.stage = self.next_stage()
-            self.tick()
+            await self.tick()
 
         elif self.stage == 'summary':
             if self.chancellor_rejections == 3:
                 self.chancellor_rejections = 0
-                self.send_message("As three elections in a row have failed, the first policy on the top of the deck will be passed.", color=EmbedColor.WARN)
+                await self.send_message("As three elections in a row have failed, the first policy on the top of the deck will be passed.", color=EmbedColor.WARN)
 
                 policy = self.policy_deck.pop()
                 self.board[policy.card_type] += 1
-                self.send_message(f'A {policy.card_type} policy was passed!')
+                await self.send_message(f'A {policy.card_type} policy was passed!')
 
             if self.board['liberal'] == 5:
-                self.send_message('Five liberal policies have been passed, and the Liberals win!', color=EmbedColor.SUCCESS)
+                await self.send_message('Five liberal policies have been passed, and the Liberals win!', color=EmbedColor.SUCCESS)
                 return
 
             if self.board['fascist'] == 6:
-                self.send_message('Six fascist policies have been passed, and the Fascists win!', color=EmbedColor.ERROR)
+                await self.send_message('Six fascist policies have been passed, and the Fascists win!', color=EmbedColor.ERROR)
                 return
 
             # Redundant message, show image of board progress
             message = f'{self.board["liberal"]} liberal policies and {self.board["fascist"]} fascist policies have been passed.'
-            self.send_message(message, color=EmbedColor.INFO)
+            await self.send_message(message, color=EmbedColor.INFO)
 
             if self.policy_count < 3:
                 self.generate_deck()
-                self.send_message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
+                await self.send_message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
             
             if self.do_exec_act:
                 self.do_exec_act = False
-                if self.executive_action() == -1:
+                no_action = await self.executive_action() == -1
+                if no_action:
                     return
             
             # Reset player properties - comment this out for now as we're not using it
@@ -307,14 +308,14 @@ class SecretHitler(Game):
                 self.chancellor.last_chancellor = True
             if self.president:
                 self.president.last_president = True
-            print('\n' * 3)
+            # print('\n' * 3)
 
             self.rounds += 1
             self.stage = self.next_stage()
-            self.tick()
+            await self.tick()
            
 
-    def assign_identities(self):
+    async def assign_identities(self):
         """Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)."""
         identities = ['Hitler']
         # Add appropriate fascists depending on player count
@@ -332,7 +333,7 @@ class SecretHitler(Game):
                 hitler = player
             elif identity == 'Fascist':
                 fascists.append(player)
-            self.send_message(f'You are a {identity}.', channel=player.dm_channel)
+            await self.send_message(f'You are a {identity}.', channel=player.dm_channel, footer=player.name)
         for fascist in fascists:
             team = [f.name for f in fascists if f.name != fascist.name]
             if len(team):
@@ -340,20 +341,22 @@ class SecretHitler(Game):
             else:
                 team = 'You are the only fascist'
             message = f'{team}\n{hitler.name} is Hitler'
-            self.send_message(message, channel=fascist.dm_channel)
+            await self.send_message(message, channel=fascist.dm_channel, footer=fascist.name)
         if len(fascists) == 1:
             message = f'{fascists[0].name} is a fascist'
-            self.send_message(message, channel=hitler.dm_channel)
+            await self.send_message(message, channel=hitler.dm_channel, footer=hitler.name)
 
-    def start_game(self):
+    async def start_game(self):
         """Checks if the game can start and assigns roles to players."""
         if not 5 <= self.player_count <= 10:
-            self.send_message('You must have between 5-10 players to start the game.', EmbedColor.ERROR)
+            await self.send_message('You must have between 5-10 players to start the game.', color=EmbedColor.ERROR)
             return
-        self.assign_identities()
+        await self.assign_identities()
 
+        # The first player is the first to join
+        self.player = self.players.head
         # Runs the current stage of the game
-        self.tick()
+        await self.tick()
 
 if __name__ == "__main__":
     game = SecretHitler(name='Secret Hitler')
