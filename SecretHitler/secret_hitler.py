@@ -220,6 +220,7 @@ class SecretHitler(Game):
                 if self.board['fascist'] >= 3 and self.chancellor.identity == 'Hitler':
                     message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler, and with 3 or more fascist policies in place, the Fascists win!'
                     await self.send_message(message, color=EmbedColor.ERROR)
+                    return
                 self.stage = self.next_stage()
                 await self.tick()
             else:
