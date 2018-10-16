@@ -23,13 +23,8 @@ class SecretHitler(Game):
     name = 'Secret Hitler'
     def __init__(self):
         super().__init__()
-
-        # Adding test players, should replace with a proper player join mechanic
-        # Just add to linkedlist and rewrite all the stuffs...
+        
         self.players = LinkedList()
-        # for x in alphabet[:8]:
-        #     self.add_player(x)
-
         # Keeps track of enacted policies
         self.board = {
             'fascist': 0,
@@ -42,6 +37,7 @@ class SecretHitler(Game):
         self.next_stage = lambda: next(self.stages)
         self.stage = self.next_stage()
 
+        # Set starting game values
         self.chancellor_rejections = 0
         self.chancellor = None
         self.president = None
@@ -56,12 +52,12 @@ class SecretHitler(Game):
         self.generate_deck()
 
         self.rounds = 0
+        self.started = False
 
     @property
     def player_list(self):
         """Property that returns a list of players."""
         return self.players.elements
-
 
     @property
     def policy_count(self):
@@ -76,7 +72,11 @@ class SecretHitler(Game):
 
     async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
-        player = Player(member=discord_member)
+        if discord_member:
+            dm_channel = await discord_member.create_dm()
+        else:
+            dm_channel = None
+        player = Player(member=discord_member, dm_channel=dm_channel)
         if discord_member is None or not self.players.find(discord_member.id, attr='id'):
             self.players.add(player)
             await self.send_message(f'{player.name} joined the game.')
@@ -101,7 +101,6 @@ class SecretHitler(Game):
         self.policy_deck.extend([PolicyCard(card_type='fascist', img_src='')] * (11 - self.board['fascist']))
         self.policy_deck.extend([PolicyCard(card_type='liberal', img_src='')] * (6 - self.board['liberal']))
         shuffle(self.policy_deck)
-
 
     @property  
     def valid_chancellors(self):
@@ -201,14 +200,11 @@ class SecretHitler(Game):
             await self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
 
             # Rewrite this into proper chancellor choosing function
-            self.nominee = self.choose_chancellor()
-            while self.nominee == self.prev_president or self.nominee == self.prev_chancellor:
-                await self.send_message('This player is ineligible to be nominated as Chancellor. Please choose another chancellor.', color=EmbedColor.ERROR)
+            if self.president.test_player:
                 self.nominee = self.choose_chancellor()
-
-            await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
-            self.stage = self.next_stage()
-            await self.tick()
+                await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
+                self.stage = self.next_stage()
+                await self.tick()
 
         elif self.stage == 'election':
             voting_results = self.get_voting_results()
@@ -334,7 +330,8 @@ class SecretHitler(Game):
                 hitler = player
             elif identity == 'Fascist':
                 fascists.append(player)
-            await self.send_message(f'You are a {identity}.', channel=player.dm_channel, footer=player.name)
+            article = 'a ' if identity != 'Hitler' else ''
+            await self.send_message(f'You are {article}{identity}.', channel=player.dm_channel, footer=player.name)
         for fascist in fascists:
             team = [f.name for f in fascists if f.name != fascist.name]
             if len(team):
@@ -357,6 +354,7 @@ class SecretHitler(Game):
         # The first player is the first to join
         self.player = self.players.head
         # Runs the current stage of the game
+        self.started = True
         await self.tick()
 
 if __name__ == "__main__":

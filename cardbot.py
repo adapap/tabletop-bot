@@ -124,13 +124,11 @@ async def _eval(ctx, *, cmd):
         color = EmbedColor.ERROR
     await ctx.send(embed=Embed(title=f'○{" " * 150}○', description=f':inbox_tray:\n```python\n{cmd[4:]}```\n:outbox_tray:\n```python\n{result}```', color=color))
 
-
 @bot.command(aliases=['game_list'])
 async def games(ctx):
     """Returns a list of available games to play."""
     game_list = '\n'.join([x().name for x in cardbot.games.values()])
     await ctx.send(embed=Embed(title='Games', description=game_list, color=EmbedColor.INFO))
-
 
 @bot.command(aliases=['load'])
 async def load_game(ctx, *game_name: str):
@@ -154,6 +152,22 @@ async def load_game(ctx, *game_name: str):
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
     await ctx.send(embed=Embed(title=f'{default}{game_name} loaded.', color=EmbedColor.SUCCESS))
+
+@bot.command(aliases=['unload'])
+async def unload_game(ctx):
+    """Removes all commands and unloads the current game."""
+    if not cardbot.game:
+        await ctx.send(embed=Embed(title=f'There is no game running. Use `$load [game]` to start a game.', color=EmbedColor.WARN))
+        return
+    game_name = cardbot.game.name
+    name = re.sub(r'\s*', '', game_name)
+    try:
+        bot.unload_extension(f'{name}.commands')
+        cardbot.game = None
+    except Exception as e:
+        print(f'Unloading failed.', file=sys.stderr)
+        traceback.print_exc()
+    await ctx.send(embed=Embed(title=f'{game_name} has been unloaded.', color=EmbedColor.INFO))
 
 @bot.command(aliases=['start'])
 async def start_game(ctx):

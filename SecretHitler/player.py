@@ -1,21 +1,22 @@
 import discord
 from itertools import count
-from random import randint
+from random import sample
 
 uid_gen = count(-1, -1)
+nametag_gen = iter(sample(range(100, 1000), 900))
 
 class Player:
-    def __init__(self, *, member: discord.Member=None):
+    def __init__(self, *, member: discord.Member=None, dm_channel=None):
         if member is None:
-            self.name = f'Player{randint(100, 999)}'
+            self.name = f'Bot{next(nametag_gen)}'
             self.id = next(uid_gen)
-            self.dm_channel = None
-            self.test = True
+            self.dm_channel = dm_channel
+            self.test_player = True
         else:
             self.name = member.display_name
             self.id = member.id
-            self.dm_channel = member.dm_channel
-            self.test = False
+            self.dm_channel = dm_channel
+            self.test_player = False
         self.identity = None
         self.voted = False
         self.veto = False

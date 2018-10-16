@@ -1,6 +1,7 @@
 import discord
 from discord import Embed
 
+
 from utils import EmbedColor
 
 class Game:
@@ -14,6 +15,23 @@ class Game:
     def player_count(self):
         """Returns the number of players in the game."""
         return len(self.players)
+
+    @property
+    def player_ids(self):
+        """Returns a list of player IDs of the players in the game."""
+        return [player.data.id for player in self.players]    
+
+    @property
+    def duration(self):
+        """Returns the time elapsed since the start of the game."""
+        return 1
+
+    def get_player(self, _id):
+        """Returns a player object given their ID."""
+        try:
+            return self.players[self.player_ids.index(_id)]
+        except ValueError:
+            return None
 
     async def send_message(self, description: str, *, 
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None):
