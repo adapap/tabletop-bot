@@ -1,4 +1,5 @@
 # Base Modules
+from .bot_action import Bot as bot_action
 from .cards import *
 from .player import Player
 
@@ -51,8 +52,22 @@ class SecretHitler(Game):
         self.previously_investigated = []
         self.generate_deck()
 
+        self.votes = {
+            'ja': [],
+            'nein': []
+        }
         self.rounds = 0
-        self.started = False
+
+    @property
+    def vote_count(self):
+        """Returns the number of players that have voted."""
+        return sum(len(x) for x in self.votes.values())
+
+    @property
+    def not_voted(self):
+        """Returns a list of players who have not voted."""
+        return [str(player) for player in self.players.elements if not player.voted]
+    
 
     @property
     def player_list(self):
@@ -73,6 +88,7 @@ class SecretHitler(Game):
     async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
         if discord_member:
+            # DM Channels must be created for non-bot players.
             dm_channel = await discord_member.create_dm()
         else:
             dm_channel = None
@@ -110,26 +126,6 @@ class SecretHitler(Game):
             if player != self.president and not player.last_chancellor and not (player.last_president and self.player_count > 5):
                 valid.append(player)
         return valid
-
-    def choose_chancellor(self):
-        """Handles nominating a chancellor. Is a dummy function that just chooses a random player right now."""
-        valid = self.valid_chancellors
-        return choice(valid)
-
-    def get_voting_results(self):
-        """Handles getting voting results. Is a dummy function that just returns true/false right now."""
-        return choice([True, False])
-
-    def pick_chosen_policies(self, policies):
-        """Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now."""
-        return sample(policies, 2)
-
-    def get_enacted_policy(self, chosen_policies):
-        """Handles getting the Chancellor's chosen policy. Is a dummy function that just chooses a random policy now."""
-        return choice(chosen_policies)
-
-    def wants_to_veto(self):
-        return(choice([True, False]))
 
     async def executive_action(self): 
         """Manages the executive actions that the President must do after a fascist policy is passed."""
@@ -191,7 +187,7 @@ class SecretHitler(Game):
 
         return 0
 
-    async def tick(self):
+    async def tick(self, voting_results=None):
         """Handles the turn-by-turn logic of the game."""
         await asyncio.sleep(1)
         if self.stage == 'nomination':
@@ -199,16 +195,15 @@ class SecretHitler(Game):
             self.special_election = False
             await self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
 
-            # Rewrite this into proper chancellor choosing function
+            # Bot elects a chancellor
             if self.president.test_player:
-                self.nominee = self.choose_chancellor()
-                await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor!')
+                self.nominee = bot_action.choose_chancellor(self.valid_chancellors)
+                await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
                 self.stage = self.next_stage()
-                await self.tick()
+                if self.bot_count == self.player_count:
+                    await self.tick()
 
         elif self.stage == 'election':
-            voting_results = self.get_voting_results()
-
             if voting_results:
                 self.chancellor_rejections = 0
                 self.chancellor = self.nominee
@@ -227,15 +222,16 @@ class SecretHitler(Game):
                 await self.tick()
 
         elif self.stage == 'president':
-            policies = [self.policy_deck.pop() for _ in range(3)]
-            message = '<' + ', '.join([policy.card_type.title() for policy in policies]) + '> Pick 2 policies to send to the Chancellor.'
-            await self.send_message(message, channel=self.president.dm_channel, footer=self.president.name)
+            pass
+            # policies = [self.policy_deck.pop() for _ in range(3)]
+            # message = '<' + ', '.join([policy.card_type.title() for policy in policies]) + '> Pick 2 policies to send to the Chancellor.'
+            # await self.send_message(message, channel=self.president.dm_channel, footer=self.president.name)
 
-            self.candidate_policies = self.pick_chosen_policies(policies)
-            message = '<' + ', '.join([policy.card_type.title() for policy in self.candidate_policies]) + '> Choose a policy to enact.'
-            await self.send_message(message, channel=self.chancellor.dm_channel, footer=self.chancellor.name)
-            self.stage = self.next_stage()
-            await self.tick()
+            # self.candidate_policies = self.pick_chosen_policies(policies)
+            # message = '<' + ', '.join([policy.card_type.title() for policy in self.candidate_policies]) + '> Choose a policy to enact.'
+            # await self.send_message(message, channel=self.chancellor.dm_channel, footer=self.chancellor.name)
+            # self.stage = self.next_stage()
+            # await self.tick()
 
         elif self.stage == 'chancellor':
             if self.board['fascist'] >= 5:
@@ -273,10 +269,12 @@ class SecretHitler(Game):
 
             if self.board['liberal'] == 5:
                 await self.send_message('Five liberal policies have been passed, and the Liberals win!', color=EmbedColor.SUCCESS)
+                self.started = False
                 return
 
             if self.board['fascist'] == 6:
                 await self.send_message('Six fascist policies have been passed, and the Fascists win!', color=EmbedColor.ERROR)
+                self.started = False
                 return
 
             # Redundant message, show image of board progress

@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import traceback
 from importlib import import_module
 
 # Custom
@@ -124,7 +125,7 @@ async def _eval(ctx, *, cmd):
         color = EmbedColor.ERROR
     await ctx.send(embed=Embed(title=f'○{" " * 150}○', description=f':inbox_tray:\n```python\n{cmd[4:]}```\n:outbox_tray:\n```python\n{result}```', color=color))
 
-@bot.command(aliases=['game_list'])
+@bot.command(aliases=['game_list', 'gamelist'])
 async def games(ctx):
     """Returns a list of available games to play."""
     game_list = '\n'.join([x().name for x in cardbot.games.values()])
@@ -133,6 +134,9 @@ async def games(ctx):
 @bot.command(aliases=['load'])
 async def load_game(ctx, *game_name: str):
     """Loads the game for players to join and configures player joining."""
+    # If a game is already running, unload it first.
+    if cardbot.game:
+        await unload_game(ctx)
     game_name = ' '.join(game_name)
     default = ''
     # DEFAULT GAME
@@ -151,7 +155,9 @@ async def load_game(ctx, *game_name: str):
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    await ctx.send(embed=Embed(title=f'{default}{game_name} loaded.', color=EmbedColor.SUCCESS))
+    msg = f'{default}{game_name} loaded.'
+    await ctx.send(embed=Embed(title=msg, color=EmbedColor.SUCCESS))
+    print(msg)
 
 @bot.command(aliases=['unload'])
 async def unload_game(ctx):
@@ -167,11 +173,14 @@ async def unload_game(ctx):
     except Exception as e:
         print(f'Unloading failed.', file=sys.stderr)
         traceback.print_exc()
-    await ctx.send(embed=Embed(title=f'{game_name} has been unloaded.', color=EmbedColor.INFO))
+    msg = f'{game_name} has been unloaded.'
+    await ctx.send(embed=Embed(title=msg, color=EmbedColor.INFO))
+    print(msg)
 
 @bot.command(aliases=['start'])
 async def start_game(ctx):
     """Starts the current game through the game's start_game method."""
+    await bot.change_presence(activity=discord.Game(name=cardbot.game.name))
     await cardbot.game.start_game()
 
 @bot.event
@@ -188,7 +197,7 @@ async def on_ready():
     print(uid_message)
     print('Prefix:', '$')
     print(separator)
-    await bot.change_presence(activity=discord.Game(name='Tabletop Bot'))
+    await bot.change_presence(activity=discord.Game(name='awesome games'))
 
 
 if __name__ == '__main__':
