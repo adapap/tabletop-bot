@@ -13,9 +13,8 @@ import traceback
 from importlib import import_module
 
 # Custom
-import verify
 from game import Game
-from utils import EmbedColor, LinkedList
+from utils import *
 
 class Cardbot:
     """Handles the setup and instancing of different games."""
@@ -200,6 +199,10 @@ async def on_ready():
     print(separator)
     await bot.change_presence(activity=discord.Game(name='awesome games'))
 
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.errors.CheckFailure):
+        await ctx.send(embed=Embed(description='You cannot use that command at this time.', color=EmbedColor.ERROR))
 
 if __name__ == '__main__':
     cardbot = Cardbot()

@@ -9,7 +9,7 @@ import discord
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from game import Game
-from utils import EmbedColor, LinkedList
+from utils import *
 
 from itertools import cycle
 from random import shuffle, choice, sample
@@ -25,7 +25,7 @@ class SecretHitler(Game):
     def __init__(self):
         super().__init__()
         
-        self.players = LinkedList()
+        self._players = LinkedList()
         # Keeps track of enacted policies
         self.board = {
             'fascist': 0,
@@ -59,6 +59,12 @@ class SecretHitler(Game):
         self.rounds = 0
 
     @property
+    def players(self):
+        """Returns a list of players in the game."""
+        return self._players.elements
+    
+
+    @property
     def vote_count(self):
         """Returns the number of players that have voted."""
         return sum(len(x) for x in self.votes.values())
@@ -66,13 +72,7 @@ class SecretHitler(Game):
     @property
     def not_voted(self):
         """Returns a list of players who have not voted."""
-        return [str(player) for player in self.players.elements if not player.voted]
-    
-
-    @property
-    def player_list(self):
-        """Property that returns a list of players."""
-        return self.players.elements
+        return [str(player) for player in self.players if not player.voted]
 
     @property
     def policy_count(self):
@@ -122,7 +122,7 @@ class SecretHitler(Game):
     def valid_chancellors(self):
         """Returns a list of valid chancellor nominees."""
         valid = []
-        for player in self.player_list:
+        for player in self.players:
             if player != self.president and not player.last_chancellor and not (player.last_president and self.player_count > 5):
                 valid.append(player)
         return valid
@@ -135,7 +135,7 @@ class SecretHitler(Game):
             await self.send_message('The President must investigate another player\'s identity!')
 
             # Should be replaced with actual choosing procedure
-            valid = set(self.player_list) - set([self.president])
+            valid = set(self.players) - set([self.president])
             for investigated_player in self.previously_investigated:
                 valid -= set([investigated_player])
             suspect = choice(list(valid))
@@ -154,12 +154,13 @@ class SecretHitler(Game):
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
             await self.send_message('The President will now peek at the top three policies in the deck!')
-            await self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}', channel=self.president.dm_channel)
+            await self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}',
+                channel=self.president.dm_channel)
 
         # TODO: Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count > 7:
             await self.send_message('The President must choose another player to be President!')
-            valid = set(self.player_list) - set([self.president])
+            valid = set(self.players) - set([self.president])
             nominee = choice(list(valid))
             while nominee == self.president:
                 self.send_message('You may not choose yourself!')
@@ -172,14 +173,14 @@ class SecretHitler(Game):
             await self.send_message('The President must now execute a player!')
 
             # Should be replaced with actual choosing procedure
-            valid = set(self.player_list) - set([self.president])
+            valid = set(self.players) - set([self.president])
             victim = choice(list(valid))
 
             while victim == self.president:
                 await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
                 victim = choice(list(valid))
 
-            self.players.remove(victim)
+            self._players.remove(victim)
             if victim.identity == 'Hitler':
                 await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
                 return -1
@@ -187,7 +188,7 @@ class SecretHitler(Game):
 
         return 0
 
-    async def tick(self, voting_results=None):
+    async def tick(self, voting_results: bool=None):
         """Handles the turn-by-turn logic of the game."""
         await asyncio.sleep(1)
         if self.stage == 'nomination':
@@ -322,7 +323,7 @@ class SecretHitler(Game):
         # Indicate what identity a player has and inform related parties
         fascists = []
         hitler = None
-        for player, identity in zip(self.player_list, identities):
+        for player, identity in zip(self.players, identities):
             player.identity = identity
             if identity == 'Hitler':
                 hitler = player

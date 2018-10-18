@@ -1,3 +1,5 @@
+__all__ = ['EmbedColor', 'Node', 'LinkedList', 'upper', 'lower']
+
 class EmbedColor:
     ERROR = 14024704
     WARN = 16760064
@@ -115,3 +117,12 @@ class LinkedList:
             n = n.next
         rep += f'[{n.data}]'
         return rep
+
+
+def upper(s):
+    """Returns the upper-case form of a string."""
+    return s.upper()
+
+def lower(s):
+    """Returns the lower-case form of a string."""
+    return s.lower()

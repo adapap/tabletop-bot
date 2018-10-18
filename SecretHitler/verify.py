@@ -5,3 +5,9 @@ def game_started():
     async def predicate(ctx):
         return ctx.bot.cardbot.game.started
     return commands.check(predicate)
+
+def stage(stage):
+    """Verifies that the game is in a current stage."""
+    async def predicate(ctx):
+        return ctx.bot.cardbot.game.stage == stage
+    return commands.check(predicate)

@@ -6,9 +6,9 @@ from discord.ext import commands
 import asyncio
 import functools
 from . import bot_action
+from . import verify
 from game import Game
-from utils import EmbedColor
-import verify
+from utils import *
 
 class Cog:
     def __init__(self, bot):
@@ -40,6 +40,7 @@ class Cog:
     # Game Commands
     @commands.command()
     @verify.game_started()
+    @verify.stage('nomination')
     async def nominate(self, ctx, player: str=''):
         """Uses discord command $nominate to elect a chancellor."""
         member = None
@@ -69,7 +70,8 @@ class Cog:
 
     @commands.command()
     @verify.game_started()
-    async def vote(self, ctx, vote: str=''):
+    @verify.stage('election')
+    async def vote(self, ctx, vote: lower):
         """Reads votes from DMs to determine election status."""
         channel = ctx.message.channel
         game = self.game
@@ -77,7 +79,6 @@ class Cog:
             await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
         player = game.players.find(ctx.author.id, attr='id').data
         if type(channel) == discord.channel.DMChannel:
-            vote = vote.lower()
             if vote not in ['ja', 'nein']:
                 await ctx.send(embed=Embed(description='Your vote must either be "ja" or "nein".', color=EmbedColor.ERROR))
                 return
@@ -107,7 +108,8 @@ class Cog:
 
     @commands.command(aliases=['policy'])
     @verify.game_started()
-    async def send_policy(self, ctx, policy_name: str=''):
+    @verify.stage('president')
+    async def send_policy(self, ctx, policy_name: lower=''):
         """Send a policy given in the DM."""
         policy_name = policy_name.lower()
         player = self.player.president

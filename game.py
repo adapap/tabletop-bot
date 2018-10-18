@@ -9,7 +9,6 @@ class Game:
     def __init__(self):
         self.channel = None
         self.bot = None
-        self.players = []
         self.started = False
 
     @property
@@ -20,12 +19,12 @@ class Game:
     @property
     def player_ids(self):
         """Returns a list of player IDs of the players in the game."""
-        return [player.data.id for player in self.players]    
+        return [player.id for player in self.players]    
 
     @property
     def bots(self):
         """Returns a list of players in the game that are bots."""
-        return [player.data for player in self.players if player.data.test_player]
+        return [player for player in self.players if player.test_player]
 
     @property
     def bot_count(self):
@@ -54,6 +53,10 @@ class Game:
             for field in fields:
                 embed.add_field(**field)
         await channel.send(embed=embed)
+
+    async def start_game(self):
+        """Subclasses, or games, must implement this method."""
+        raise NotImplementedError(f'{self.__class__.__name__} needs a `start_game` method.')
 
     def __repr__(self):
         return f'{self.name}'
