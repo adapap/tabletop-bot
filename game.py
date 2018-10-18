@@ -19,7 +19,7 @@ class Game:
     @property
     def player_ids(self):
         """Returns a list of player IDs of the players in the game."""
-        return [player.id for player in self.players]    
+        return [player.id for player in self.players]
 
     @property
     def bots(self):
@@ -36,8 +36,15 @@ class Game:
         """Returns the time elapsed since the start of the game."""
         return 1
 
+    def find_player(_id):
+        """Finds a player given their ID."""
+        try:
+            return player_ids[player_ids.index(_id)]
+        except ValueError:
+            return None
+
     async def send_message(self, description: str, *, 
-        title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None):
+        title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
         """
         An embed constructor which sends a message to the channel.
         Default channel is the channel in which the game was started.
@@ -52,6 +59,8 @@ class Game:
         if fields:
             for field in fields:
                 embed.add_field(**field)
+        if image:
+            embed.set_image(url=image)
         await channel.send(embed=embed)
 
     async def start_game(self):

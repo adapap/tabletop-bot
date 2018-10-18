@@ -62,6 +62,10 @@ def has_role(self, rolename):
     return rolename in [role.name for role in self.roles]
 discord.Member.has_role = has_role
 
+@bot.command(aliases=['test'])
+async def debug(ctx, *params: str):
+    """General purpose test command."""
+    await ctx.send(params)
 
 @bot.command(aliases=['purge', 'del', 'delete'])
 async def clear(ctx, number=1):

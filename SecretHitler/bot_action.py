@@ -12,8 +12,8 @@ class Bot:
         return choice(['ja', 'nein'])
 
     @staticmethod
-    def pick_chosen_policies(self, policies):
-        """Handles getting the President's chosen policies. Is a dummy function that just chooses two random policies now."""
+    def send_policies(self, policies):
+        """Bot function: Choose two random policies to send to the Chancellor."""
         return sample(policies, 2)
 
     @staticmethod

@@ -51,14 +51,14 @@ class Cog:
             await game.send_message('You are not the President.', color=EmbedColor.WARN)
         elif player.startswith('Bot'):
             try:
-                member = game.players[[player.name for player in game.players.elements].index(player)]
+                member = game.players[[player.name for player in game.players].index(player)]
             except ValueError:
                 await game.send_message(f'There is no bot named {player}.', color=EmbedColor.ERROR)
         else:
             if len(ctx.message.mentions) != 1:
                 await game.send_message('Invalid nomination. @mention the player you would like to nominate.', color=EmbedColor.WARN)
             else:
-                member = game.players.find(ctx.message.mentions[0].id, attr='id')
+                member = game.find_player(ctx.message.mentions[0].id)
         # Logic
         if member == game.prev_president or member == game.prev_chancellor or member.id == ctx.author.id:
             await game.send_message('This player is ineligible to be nominated as Chancellor.\
@@ -66,7 +66,7 @@ class Cog:
         else:
             game.nominee = member
             await game.send_message(f'{game.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
-            game.stage = game.next_stage()
+            game.next_stage()
 
     @commands.command()
     @verify.game_started()
@@ -77,7 +77,7 @@ class Cog:
         game = self.game
         if not game.stage == 'election':
             await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
-        player = game.players.find(ctx.author.id, attr='id').data
+        player = game.find_player(ctx.author.id)
         if type(channel) == discord.channel.DMChannel:
             if vote not in ['ja', 'nein']:
                 await ctx.send(embed=Embed(description='Your vote must either be "ja" or "nein".', color=EmbedColor.ERROR))
@@ -95,6 +95,7 @@ class Cog:
                 description='Hey there! You might want to keep your vote private, so send it here instead.',
                 color=EmbedColor.INFO))
         if len(game.not_voted) == game.bot_count:
+            # Bots send in votes
             for bot in game.bots:
                 vote = bot_action.vote()
                 bot.voted = True
@@ -106,16 +107,34 @@ class Cog:
             results = len(game.votes['ja']) > len(game.votes['nein'])
             await game.tick(voting_results=results)
 
-    @commands.command(aliases=['policy'])
+    @commands.command(aliases=['policy', 'send'])
     @verify.game_started()
     @verify.stage('president')
-    async def send_policy(self, ctx, policy_name: lower=''):
+    async def send_policy(self, ctx, *policies: lower):
         """Send a policy given in the DM."""
-        policy_name = policy_name.lower()
-        player = self.player.president
-        if policy_name not in ['fascist', 'liberal']:
-            await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player.dm_channel, color=EmbedColor.ERROR)
+        player_dm = self.player.president.dm_channel
+        given_policies = [p.name for p in self.game.policies]
+        if len(policies) != 2:
+            await self.game.send_message('You must choose exactly two policies to send.', channel=player_dm, color=EmbedColor.ERROR)
             return
+        if any(policies.count(p) > given_policies.count(p) for p in policies):
+            await self.game.send_message('You tried to send a policy that was not given to you.', channel=player_dm, color=EmbedColor.ERROR)
+        for policy in policies:
+            if policy not in ['fascist', 'liberal']:
+                await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player_dm, color=EmbedColor.ERROR)
+                return
+            self.game.policies.remove(given_policies.index(policy))
+        message = ', '.join([policy.card_type.title() for policy in self.policies])
+        await self.send_message('Choose a policy to enact.', title=message,
+            channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
+        self.stage = self.next_stage()
+
+    @commands.command(aliases=['enact'])
+    @verify.game_started()
+    @verify.stage('chancellor')
+    async def enact_policy(self, ctx, policy: str):
+        """Choose a policy to enact given in the DM."""
+        pass
 
 def setup(bot):
     bot.add_cog(Cog(bot))
