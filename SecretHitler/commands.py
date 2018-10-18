@@ -4,19 +4,17 @@ from discord import Embed
 from discord.ext import commands
 
 import asyncio
-from .bot_action import Bot as bot_action
+import functools
+from . import bot_action
 from game import Game
 from utils import EmbedColor
+import verify
 
 class Cog:
     def __init__(self, bot):
         self.bot = bot
         self.cardbot = bot.cardbot
         self.game = self.cardbot.game
-
-    @commands.command(aliases=['test'])
-    async def debug(self, ctx):
-        pass
 
     @commands.command()
     async def join(self, ctx, test_player: str='', repeat: int=1):
@@ -41,12 +39,11 @@ class Cog:
 
     # Game Commands
     @commands.command()
+    @verify.game_started()
     async def nominate(self, ctx, player: str=''):
         """Uses discord command $nominate to elect a chancellor."""
         member = None
         game = self.game
-        if not game.started:
-            return
         if not game.stage == 'nomination':
             await game.send_message('It is not time to nominate.', color=EmbedColor.WARN)
         elif ctx.author.id != game.president.id:
@@ -60,7 +57,7 @@ class Cog:
             if len(ctx.message.mentions) != 1:
                 await game.send_message('Invalid nomination. @mention the player you would like to nominate.', color=EmbedColor.WARN)
             else:
-                member = game.get_player(ctx.message.mentions[0].id)
+                member = game.players.find(ctx.message.mentions[0].id, attr='id')
         # Logic
         if member == game.prev_president or member == game.prev_chancellor or member.id == ctx.author.id:
             await game.send_message('This player is ineligible to be nominated as Chancellor.\
@@ -71,12 +68,11 @@ class Cog:
             game.stage = game.next_stage()
 
     @commands.command()
+    @verify.game_started()
     async def vote(self, ctx, vote: str=''):
         """Reads votes from DMs to determine election status."""
         channel = ctx.message.channel
         game = self.game
-        if not game.started:
-            return
         if not game.stage == 'election':
             await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
         player = game.players.find(ctx.author.id, attr='id').data
@@ -109,10 +105,15 @@ class Cog:
             results = len(game.votes['ja']) > len(game.votes['nein'])
             await game.tick(voting_results=results)
 
-    @commands.Command(aliases=['policy'])
+    @commands.command(aliases=['policy'])
+    @verify.game_started()
     async def send_policy(self, ctx, policy_name: str=''):
         """Send a policy given in the DM."""
-        pass
+        policy_name = policy_name.lower()
+        player = self.player.president
+        if policy_name not in ['fascist', 'liberal']:
+            await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player.dm_channel, color=EmbedColor.ERROR)
+            return
 
 def setup(bot):
     bot.add_cog(Cog(bot))

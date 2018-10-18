@@ -53,7 +53,7 @@ class LinkedList:
         if self.head is None:
             return None
         for elem in self:
-            if (not attr and elem.data == value) or (attr and getattr(elem.data, attr) == value):
+            if (attr is None and elem.data == value) or (attr is not None and getattr(elem.data, attr) == value):
                 return elem
         return None
 

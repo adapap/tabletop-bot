@@ -13,6 +13,7 @@ import traceback
 from importlib import import_module
 
 # Custom
+import verify
 from game import Game
 from utils import EmbedColor, LinkedList
 
@@ -53,9 +54,9 @@ class Cardbot:
     def __repr__(self):
         return f'<Active Game: {self.game}>'
 
+
 bot = commands.Bot(command_prefix='$', description='''A discord tabletop bot.''')
 bot.remove_command('help')
-
 
 def has_role(self, rolename):
     """Returns a boolean whether a member has a role."""

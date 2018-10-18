@@ -37,13 +37,6 @@ class Game:
         """Returns the time elapsed since the start of the game."""
         return 1
 
-    def get_player(self, _id):
-        """Returns a player object given their ID."""
-        try:
-            return self.players[self.player_ids.index(_id)]
-        except ValueError:
-            return None
-
     async def send_message(self, description: str, *, 
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None):
         """
