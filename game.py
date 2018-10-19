@@ -10,6 +10,7 @@ class Game:
         self.channel = None
         self.bot = None
         self.started = False
+        self.game_info = True
 
     @property
     def player_count(self):
@@ -36,13 +37,6 @@ class Game:
         """Returns the time elapsed since the start of the game."""
         return 1
 
-    def find_player(_id):
-        """Finds a player given their ID."""
-        try:
-            return player_ids[player_ids.index(_id)]
-        except ValueError:
-            return None
-
     async def send_message(self, description: str, *, 
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
         """
@@ -54,7 +48,12 @@ class Game:
         elif not channel:
             channel = self.channel
         embed = Embed(description=description, title=title, color=color)
-        if footer:
+        if channel != self.channel:
+            msg = f'#{self.channel.name} in {self.channel.guild.name}'
+            if footer:
+                msg = f'{footer} | {msg}'
+            embed.set_footer(text=msg)
+        elif footer:
             embed.set_footer(text=footer)
         if fields:
             for field in fields:

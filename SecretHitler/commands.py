@@ -30,12 +30,16 @@ class Cog:
             await asyncio.sleep(1)
 
     @commands.command()
-    async def leave(self, ctx):
+    async def leave(self, ctx, bot_name: str=None):
         """Leaves the current game."""
         if self.game.started:
             await self.game.send_message('add leaving in middle of game... (this will break)')
         player = ctx.author
-        await self.game.remove_player(player)
+        bot = False
+        if bot_name and bot_name in [b.name for b in self.game.bots]:
+            player = bot_name
+            bot = True
+        await self.game.remove_player(player, bot=bot)
 
     # Game Commands
     @commands.command()
@@ -77,7 +81,7 @@ class Cog:
         game = self.game
         if not game.stage == 'election':
             await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
-        player = game.find_player(ctx.author.id)
+        player = game.find_player(ctx.author.id).data
         if type(channel) == discord.channel.DMChannel:
             if vote not in ['ja', 'nein']:
                 await ctx.send(embed=Embed(description='Your vote must either be "ja" or "nein".', color=EmbedColor.ERROR))
@@ -102,6 +106,10 @@ class Cog:
                 game.votes[vote].append(bot)
             vote_ja = "\n".join([player.name for player in game.votes['ja']])
             vote_nein = "\n".join([player.name for player in game.votes['nein']])
+            if vote_ja == '':
+                vote_ja = 'None!'
+            if vote_nein == '':
+                vote_nein = 'None!'
             fields = [{'name': 'Ja', 'value': vote_ja, 'inline': True}, {'name': 'Nein', 'value': vote_nein, 'inline': True}]
             await game.send_message('', title='Voting Results', fields=fields, color=EmbedColor.INFO)
             results = len(game.votes['ja']) > len(game.votes['nein'])
@@ -112,8 +120,8 @@ class Cog:
     @verify.stage('president')
     async def send_policy(self, ctx, *policies: lower):
         """Send a policy given in the DM."""
-        player_dm = self.player.president.dm_channel
-        given_policies = [p.name for p in self.game.policies]
+        player_dm = self.game.president.dm_channel
+        given_policies = [p.card_type for p in self.game.policies]
         if len(policies) != 2:
             await self.game.send_message('You must choose exactly two policies to send.', channel=player_dm, color=EmbedColor.ERROR)
             return
@@ -124,10 +132,12 @@ class Cog:
                 await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player_dm, color=EmbedColor.ERROR)
                 return
             self.game.policies.remove(given_policies.index(policy))
+        await self.game.send_message(f'The President has sent two policies to the Chancellor,\
+            {self.game.chancellor.name}!', color=EmbedColor.SUCCESS)
         message = ', '.join([policy.card_type.title() for policy in self.policies])
-        await self.send_message('Choose a policy to enact.', title=message,
+        await self.game.send_message('Choose a policy to enact.', title=message,
             channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
-        self.stage = self.next_stage()
+        self.next_stage()
 
     @commands.command(aliases=['enact'])
     @verify.game_started()

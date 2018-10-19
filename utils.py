@@ -38,7 +38,6 @@ class LinkedList:
             elems.append(node.data)
         return elems
     
-
     def add(self, node_data):
         """Adds a node to the tail of the linked list."""
         node = Node(node_data)

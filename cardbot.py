@@ -207,6 +207,8 @@ async def on_ready():
 async def on_command_error(ctx, error):
     if isinstance(error, commands.errors.CheckFailure):
         await ctx.send(embed=Embed(description='You cannot use that command at this time.', color=EmbedColor.ERROR))
+    else:
+        await ctx.send(f'```python\n{error}```')
 
 if __name__ == '__main__':
     cardbot = Cardbot()

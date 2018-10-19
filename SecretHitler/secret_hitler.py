@@ -1,5 +1,5 @@
 # Base Modules
-from .bot_action import Bot as bot_action
+from . import bot_action
 from .cards import *
 from .player import Player
 
@@ -21,7 +21,7 @@ class SecretHitler(Game):
     def __init__(self):
         super().__init__()
         
-        self.player_list = LinkedList()
+        self.player_nodes = LinkedList()
         # Keeps track of enacted policies
         self.board = {
             'fascist': 0,
@@ -31,7 +31,7 @@ class SecretHitler(Game):
         # Create an iterator that cycles every game loop (when action is valid)
         # For example, "election" can be a stage
         self.stages = cycle(['nomination', 'election', 'president', 'chancellor', 'summary'])
-        self.stage = self.next_stage()
+        self.next_stage()
 
         # Set starting game values
         self.chancellor_rejections = 0
@@ -56,8 +56,7 @@ class SecretHitler(Game):
     @property
     def players(self):
         """Returns a list of players in the game."""
-        return self.player_list.elements
-    
+        return self.player_nodes.elements
 
     @property
     def vote_count(self):
@@ -80,6 +79,10 @@ class SecretHitler(Game):
         self.player = self.player.next
         return self.player.data
 
+    def find_player(self, _id):
+        """Finds a player by ID."""
+        return self.player_nodes.find(_id, attr='id')
+
     async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
         if discord_member:
@@ -89,19 +92,22 @@ class SecretHitler(Game):
             dm_channel = None
         player = Player(member=discord_member, dm_channel=dm_channel)
         if discord_member is None or not self.find_player(discord_member.id):
-            self.player_list.add(player)
+            self.player_nodes.add(player)
             await self.send_message(f'{player.name} joined the game.')
         else:
             await self.send_message(f'{player.name} is already in the game.', color=EmbedColor.WARN)
 
-    async def remove_player(self, discord_member: discord.Member):
+    async def remove_player(self, player, bot=False):
         """Removes a player from the game cycle."""
-        player = self.find_player(discord_member.id)
-        if not player:
+        if not bot:
+            node = self.find_player(player.id)
+        else:
+            node = self.player_nodes.find(player, attr='name')
+        if not node:
             await self.send_message(f'You are not in the current game.', color=EmbedColor.ERROR)
         else:
-            self.player_list.remove(player)
-            await self.send_message(f'{discord_member} left the game.')
+            self.player_nodes.remove(node)
+            await self.send_message(f'{node.data.name} left the game.')
 
     def next_stage(self):
         self.stage = next(self.stages)
@@ -178,7 +184,7 @@ class SecretHitler(Game):
                 await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
                 victim = choice(list(valid))
 
-            self.player_list.remove(victim)
+            self.player_nodes.remove(victim)
             if victim.identity == 'Hitler':
                 await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
                 return -1
@@ -206,21 +212,24 @@ class SecretHitler(Game):
             if voting_results:
                 self.chancellor_rejections = 0
                 self.chancellor = self.nominee
-                await self.send_message('The Chancellor was voted in!', color=EmbedColor.SUCCESS)
+                await self.send_message(f'The Chancellor was voted in! The President must now send two policies to the Chancellor.', color=EmbedColor.SUCCESS)
                 if self.board['fascist'] >= 3 and self.chancellor.identity == 'Hitler':
-                    message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler, and with 3 or more fascist policies in place, the Fascists win!'
+                    message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler,\
+                     and with 3 or more fascist policies in place, the Fascists win!'
                     await self.send_message(message, color=EmbedColor.ERROR)
                     return
+                self.next_stage()
+                await self.tick()
             else:
                 self.chancellor_rejections += 1
                 await self.send_message('The Chancellor was voted down!', color=EmbedColor.WARN)
                 for _ in range(3):
-                    self.stage = self.next_stage()
+                    self.next_stage()
                 await self.tick()
 
         elif self.stage == 'president':
             self.policies = [self.policy_deck.pop() for _ in range(3)]
-            message = ', '.join([policy.card_type.title() for policy in policies])
+            message = ', '.join([policy.card_type.title() for policy in self.policies])
             # Separate the policies with spaces (e.g. `$policy fascist fascist`)
             await self.send_message(f'Choose two policies to send to the Chancellor, {self.chancellor.name}.',
                 title=f'Policies: {message}', channel=self.president.dm_channel, footer=self.president.name,
@@ -228,7 +237,10 @@ class SecretHitler(Game):
 
             # Bot chooses two policies
             if self.president.test_player:
-                self.policies = bot_action.send_policies(policies)
+                self.policies = bot_action.send_policies(self.policies)
+                message = ', '.join([policy.card_type.title() for policy in self.policies])
+                await self.send_message('Choose a policy to enact.', title=f'Policies: {message}',
+                    channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
                 self.next_stage()
 
         elif self.stage == 'chancellor':
@@ -253,7 +265,7 @@ class SecretHitler(Game):
 
             if enacted_policy.card_type == 'fascist':
                 self.do_exec_act = True
-            self.stage = self.next_stage()
+            self.next_stage()
             await self.tick()
 
         elif self.stage == 'summary':
@@ -291,11 +303,16 @@ class SecretHitler(Game):
             
             # Reset player properties - comment this out for now as we're not using it
             
-            for player in self.player_list:
+            for player in self.players:
                 player.last_chancellor = False
                 player.last_president = False
                 player.voted = False
                 player.veto = False
+
+            self.votes = {
+                'ja': [],
+                'nein': []
+            }
             
             if self.chancellor:
                 self.chancellor.last_chancellor = True
@@ -304,7 +321,7 @@ class SecretHitler(Game):
             # print('\n' * 3)
 
             self.rounds += 1
-            self.stage = self.next_stage()
+            self.next_stage()
             await self.tick()
            
 
@@ -331,13 +348,13 @@ class SecretHitler(Game):
         for fascist in fascists:
             team = [f.name for f in fascists if f.name != fascist.name]
             if len(team):
-                team = 'The other fascists are:\n' + '\n'.join(team)
+                team = 'The other Fascists are:\n' + '\n'.join(team)
             else:
-                team = 'You are the only fascist'
+                team = 'You are the only Fascist'
             message = f'{team}\n{hitler.name} is Hitler'
             await self.send_message(message, channel=fascist.dm_channel, footer=fascist.name)
         if len(fascists) == 1:
-            message = f'{fascists[0].name} is a fascist'
+            message = f'{fascists[0].name} is a Fascist'
             await self.send_message(message, channel=hitler.dm_channel, footer=hitler.name)
 
     async def start_game(self):
@@ -348,7 +365,7 @@ class SecretHitler(Game):
         await self.assign_identities()
 
         # The first player is the first to join
-        self.player = self.players.head
+        self.player = self.player_nodes.head
         # Runs the current stage of the game
         self.started = True
         await self.tick()
