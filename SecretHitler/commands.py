@@ -111,7 +111,7 @@ class Cog:
             if vote_nein == '':
                 vote_nein = 'None!'
             fields = [{'name': 'Ja', 'value': vote_ja, 'inline': True}, {'name': 'Nein', 'value': vote_nein, 'inline': True}]
-            await game.send_message('', title='Voting Results', fields=fields, color=EmbedColor.INFO)
+            await game.send_message('', title=f'Election of {self.game.nominee.name} as Chancellor - Voting Results', fields=fields, color=EmbedColor.INFO)
             results = len(game.votes['ja']) > len(game.votes['nein'])
             await game.tick(voting_results=results)
 
