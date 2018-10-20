@@ -95,9 +95,10 @@ class Cog:
             await game.send_message(f'{game.vote_count}/{game.player_count} players voted. {not_voted_msg}')
         else:
             await ctx.message.delete()
-            await ctx.send(embed=Embed(
+            await channel.send(embed=Embed(
                 description='Hey there! You might want to keep your vote private, so send it here instead.',
                 color=EmbedColor.INFO))
+            return
         if len(game.not_voted) == game.bot_count:
             # Bots send in votes
             for bot in game.bots:
@@ -122,28 +123,64 @@ class Cog:
         """Send a policy given in the DM."""
         player_dm = self.game.president.dm_channel
         given_policies = [p.card_type for p in self.game.policies]
+        if ctx.author.id != self.game.president.id:
+            return
+        if not type(player_dm) == discord.channel.DMChannel:
+            await ctx.message.delete()
+            await channel.send(embed=Embed(
+                description='Hey there! You might want to keep your policy selection private, so send it here instead.',
+                color=EmbedColor.INFO))
+            return
         if len(policies) != 2:
             await self.game.send_message('You must choose exactly two policies to send.', channel=player_dm, color=EmbedColor.ERROR)
             return
         if any(policies.count(p) > given_policies.count(p) for p in policies):
             await self.game.send_message('You tried to send a policy that was not given to you.', channel=player_dm, color=EmbedColor.ERROR)
+            return
         for policy in policies:
             if policy not in ['fascist', 'liberal']:
                 await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player_dm, color=EmbedColor.ERROR)
                 return
             self.game.policies.remove(given_policies.index(policy))
         await self.game.send_message(f'The President has sent two policies to the Chancellor,\
-            {self.game.chancellor.name}!', color=EmbedColor.SUCCESS)
+            {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
         message = ', '.join([policy.card_type.title() for policy in self.policies])
         await self.game.send_message('Choose a policy to enact.', title=message,
             channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
-        self.next_stage()
+        self.game.next_stage()
 
     @commands.command(aliases=['enact'])
     @verify.game_started()
     @verify.stage('chancellor')
-    async def enact_policy(self, ctx, policy: str):
+    async def enact_policy(self, ctx, policy: lower):
         """Choose a policy to enact given in the DM."""
+        player_dm = self.game.chancellor.dm_channel
+        given_policies = [p.card_type for p in self.game.policies]
+        if ctx.author.id != self.game.chancellor.id:
+            return
+        if not type(player_dm) == discord.channel.DMChannel:
+            await ctx.message.delete()
+            await channel.send(embed=Embed(
+                description='Hey there! You might want to keep your policy selection private, so send it here instead.',
+                color=EmbedColor.INFO))
+            return
+        if policy not in given_policies:
+            await self.game.send_message('You must enact a policy that was given to you.', channel=player_dm, color=EmbedColor.ERROR)
+            return
+        enacted = self.game.policies.pop(given_policies.index(policy))
+        self.game.board[enacted.card_type] += 1
+        await self.game.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+
+        if enacted.card_type == 'fascist':
+            self.game.do_exec_act = True
+        self.game.next_stage()
+        self.game.tick()
+
+    @commands.command()
+    @verify.game_started()
+    @verify.stage('chancellor')
+    async def veto(self, ctx):
+        """Veto both policies received from the President."""
         pass
 
 def setup(bot):

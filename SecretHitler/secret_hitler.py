@@ -238,35 +238,38 @@ class SecretHitler(Game):
             # Bot chooses two policies
             if self.president.test_player:
                 self.policies = bot_action.send_policies(self.policies)
+                await self.game.send_message(f'The President has sent two policies to the Chancellor,\
+                    {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
                 message = ', '.join([policy.card_type.title() for policy in self.policies])
                 await self.send_message('Choose a policy to enact.', title=f'Policies: {message}',
                     channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
                 self.next_stage()
 
         elif self.stage == 'chancellor':
-            if self.board['fascist'] >= 5:
-                await self.send_message("The Chancellor may choose to invoke his veto power and discard both policies.")
-                self.chancellor.veto = choice([True, False])
-                if self.chancellor.veto:
-                    await self.send_message("The President must concur in order to discard both policies.")
-                    self.president.veto = choice([True, False])
-                    if self.president.veto:
-                        await self.send_message("The veto is successful, and both policies have been discarded.")
-                        self.stage = self.next_stage()
-                        await self.tick()
-                        return
-                    else:
-                        await self.send_message("The veto fails!", color=EmbedColor.WARN)
+            # Bot enacts or vetoes a policy
+            if self.chancellor.test_player:
+                enacted = bot_action.enact(policies)
+                self.board[enacted.card_type] += 1
+                await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
 
-            enacted_policy = choice(self.candidate_policies)
+                if enacted.card_type == 'fascist':
+                    self.do_exec_act = True
+                self.next_stage()
+                self.tick()
 
-            self.board[enacted_policy.card_type] += 1
-            await self.send_message(f'A {enacted_policy.card_type} policy was passed!', color=EmbedColor.SUCCESS)
-
-            if enacted_policy.card_type == 'fascist':
-                self.do_exec_act = True
-            self.next_stage()
-            await self.tick()
+            # if self.board['fascist'] >= 5:
+            #     await self.send_message("The Chancellor may choose to invoke his veto power and discard both policies.")
+            #     self.chancellor.veto = choice([True, False])
+            #     if self.chancellor.veto:
+            #         await self.send_message("The President must concur in order to discard both policies.")
+            #         self.president.veto = choice([True, False])
+            #         if self.president.veto:
+            #             await self.send_message("The veto is successful, and both policies have been discarded.")
+            #             self.stage = self.next_stage()
+            #             await self.tick()
+            #             return
+            #         else:
+            #             await self.send_message("The veto fails!", color=EmbedColor.WARN)
 
         elif self.stage == 'summary':
             if self.chancellor_rejections == 3:
