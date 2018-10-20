@@ -145,7 +145,11 @@ class Cog:
         await self.game.send_message(f'The President has sent two policies to the Chancellor,\
             {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
         message = ', '.join([policy.card_type.title() for policy in self.policies])
-        await self.game.send_message('Choose a policy to enact.', title=message,
+        if self.game.board['fascist'] >= 5:
+            await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
+                may choose to invoke his veto power and discard both policies')
+            message += ' - Veto Allowed'
+        await self.game.send_message('Choose a policy to enact.', title=f'Policies: {message}',
             channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
         self.game.next_stage()
 
@@ -174,14 +178,34 @@ class Cog:
         if enacted.card_type == 'fascist':
             self.game.do_exec_act = True
         self.game.next_stage()
-        self.game.tick()
+        await self.game.tick()
 
     @commands.command()
     @verify.game_started()
     @verify.stage('chancellor')
-    async def veto(self, ctx):
+    async def veto(self, ctx, concur: lower='yes'):
         """Veto both policies received from the President."""
-        pass
+        chancellor = self.game.chancellor
+        president = self.game.president
+        if not chancellor.veto:
+            if ctx.author.id == chancellor.id:
+                chancellor.veto = True
+                await self.game.send_message('The Chancellor chooses to veto. The President must concur for the veto to go through.',
+                    color=EmbedColor.SUCCESS)
+                # Check if President is bot
+                if president.test_player:
+                    await self.game.tick()
+        elif not president.veto:
+            if ctx.author.id == president.id and concur == 'yes':
+                president.veto = True
+                await self.game.send_message('The President concurrs, and the veto is successful!', color=EmbedColor.SUCCESS)
+                self.game.next_stage()
+                await self.game.tick()
+            elif ctx.author.id == president.id:
+                await self.game.send_message('The President does not concur, and the veto fails!', color=EmbedColor.WARN)
+                self.game.next_stage()
+                await self.game.tick()
+
 
 def setup(bot):
     bot.add_cog(Cog(bot))
