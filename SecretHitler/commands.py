@@ -95,9 +95,8 @@ class Cog:
             await game.send_message(f'{game.vote_count}/{game.player_count} players voted. {not_voted_msg}')
         else:
             await ctx.message.delete()
-            await channel.send(embed=Embed(
-                description='Hey there! You might want to keep your vote private, so send it here instead.',
-                color=EmbedColor.INFO))
+            await self.game.send_message('Hey there! You might want to keep your vote private, so send it here instead.',
+                color=EmbedColor.INFO, channel=ctx.author.dm_channel)
             return
         if len(game.not_voted) == game.bot_count:
             # Bots send in votes
@@ -121,15 +120,15 @@ class Cog:
     @verify.stage('president')
     async def send_policy(self, ctx, *policies: lower):
         """Send a policy given in the DM."""
+        channel = ctx.message.channel
         player_dm = self.game.president.dm_channel
         given_policies = [p.card_type for p in self.game.policies]
         if ctx.author.id != self.game.president.id:
             return
-        if not type(player_dm) == discord.channel.DMChannel:
+        if not type(channel) == discord.channel.DMChannel:
             await ctx.message.delete()
-            await channel.send(embed=Embed(
-                description='Hey there! You might want to keep your policy selection private, so send it here instead.',
-                color=EmbedColor.INFO))
+            await self.game.send_message('Hey there! You might want to keep your policy selection private, so send it here instead.',
+                color=EmbedColor.INFO, channel=ctx.author.dm_channel)
             return
         if len(policies) != 2:
             await self.game.send_message('You must choose exactly two policies to send.', channel=player_dm, color=EmbedColor.ERROR)
@@ -152,21 +151,24 @@ class Cog:
         await self.game.send_message('Choose a policy to enact.', title=f'Policies: {message}',
             channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
         self.game.next_stage()
+        # Chancellor is a bot
+        if self.game.chancellor.test_player:
+            await self.tick()
 
     @commands.command(aliases=['enact'])
     @verify.game_started()
     @verify.stage('chancellor')
     async def enact_policy(self, ctx, policy: lower):
         """Choose a policy to enact given in the DM."""
+        channel = ctx.message.channel
         player_dm = self.game.chancellor.dm_channel
         given_policies = [p.card_type for p in self.game.policies]
         if ctx.author.id != self.game.chancellor.id:
             return
-        if not type(player_dm) == discord.channel.DMChannel:
+        if not type(channel) == discord.channel.DMChannel:
             await ctx.message.delete()
-            await channel.send(embed=Embed(
-                description='Hey there! You might want to keep your policy selection private, so send it here instead.',
-                color=EmbedColor.INFO))
+            await self.game.send_message('Hey there! You might want to keep your policy selection private, so send it here instead.',
+                color=EmbedColor.INFO, channel=ctx.author.dm_channel)
             return
         if policy not in given_policies:
             await self.game.send_message('You must enact a policy that was given to you.', channel=player_dm, color=EmbedColor.ERROR)

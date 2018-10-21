@@ -1,5 +1,5 @@
 # Base Modules
-from . import bot_action
+from . import bot_action, exec_action
 from .cards import *
 from .player import Player
 
@@ -136,60 +136,24 @@ class SecretHitler(Game):
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
-            await self.send_message('The President must investigate another player\'s identity!')
-
-            # Should be replaced with actual choosing procedure
-            valid = set(self.players) - set([self.president])
-            for investigated_player in self.previously_investigated:
-                valid -= set([investigated_player])
-            suspect = choice(list(valid))
-
-            while suspect in self.previously_investigated or suspect == self.president:
-                await self.send_message('You may not investigate yourself or a previously investigated player!', color=EmbedColor.ERROR)
-                suspect = choice(list(valid))
-
-            self.previously_investigated.append(suspect)
-            suspect_role = suspect.identity
-            if suspect_role == 'Hitler':
-                suspect_role = 'Fascist'
-
-            await self.send_message(f'{suspect.name} is a {suspect_role}', channel=self.president.dm_channel, footer=self.president.name)
+            await exec_action.investigate_player(self)
 
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
-            await self.send_message('The President will now peek at the top three policies in the deck!')
-            await self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}',
-                channel=self.president.dm_channel)
+            await exec_action.policy_peek()
 
         # TODO: Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count > 7:
-            await self.send_message('The President must choose another player to be President!')
-            valid = set(self.players) - set([self.president])
-            nominee = choice(list(valid))
-            while nominee == self.president:
-                self.send_message('You may not choose yourself!')
-                nominee = choice(list(valid))
-            self.special_president = nominee
-            self.special_election = True
+            await exec_action.special_election()
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
-            await self.send_message('The President must now execute a player!')
-
-            # Should be replaced with actual choosing procedure
-            valid = set(self.players) - set([self.president])
-            victim = choice(list(valid))
-
-            while victim == self.president:
-                await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
-                victim = choice(list(valid))
-
-            self.player_nodes.remove(victim)
+            victim = exec_action.execution()
             if victim.identity == 'Hitler':
                 await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
-                return -1
+                return True
             await self.send_message(f'{victim.name} was executed.')
-        return 0
+        return False
 
     async def tick(self, voting_results: bool=None):
         """Handles the turn-by-turn logic of the game."""
@@ -253,7 +217,7 @@ class SecretHitler(Game):
         elif self.stage == 'chancellor':
             # Bot enacts or vetoes a policy
             if self.chancellor.test_player:
-                enacted = bot_action.enact(policies)
+                enacted = bot_action.enact(self.policies)
                 # Chancellor veto
                 if self.board['fascist'] >= 5:
                     self.chancellor.veto = bot_action.veto()
@@ -267,7 +231,12 @@ class SecretHitler(Game):
                         if enacted.card_type == 'fascist':
                             self.do_exec_act = True
                         self.next_stage()
-                        self.tick()
+                        await self.tick()
+                else:
+                    self.board[enacted.card_type] += 1
+                    await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+                    self.next_stage()
+                    await self.tick()
 
             # President veto
             if self.president.test_player and self.chancellor.veto:
@@ -310,12 +279,11 @@ class SecretHitler(Game):
             
             if self.do_exec_act:
                 self.do_exec_act = False
-                no_action = await self.executive_action() == -1
-                if no_action:
+                hitler_killed = await self.executive_action()
+                if hitler_killed:
                     return
             
             # Reset player properties - comment this out for now as we're not using it
-            
             for player in self.players:
                 player.last_chancellor = False
                 player.last_president = False
