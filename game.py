@@ -11,6 +11,7 @@ class Game:
         self.bot = None
         self.started = False
         self.game_info = True
+        self.asset_folder = ''
 
     @property
     def player_count(self):
@@ -59,8 +60,12 @@ class Game:
             for field in fields:
                 embed.add_field(**field)
         if image:
-            embed.set_image(url=image)
-        await channel.send(embed=embed)
+            image_path = self.asset_folder + image
+            file = discord.File(image_path, filename='image.png')
+            embed.set_image(url='attachment://image.png')
+            await channel.send(embed=embed, file=file)
+        else:
+            await channel.send(embed=embed)
 
     async def start_game(self):
         """Subclasses, or games, must implement this method."""

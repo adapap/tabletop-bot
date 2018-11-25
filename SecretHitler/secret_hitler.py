@@ -20,6 +20,15 @@ class SecretHitler(Game):
     name = 'Secret Hitler'
     def __init__(self):
         super().__init__()
+
+        self.load_message = """\
+Secret Hitler is a dramatic game of political intrigue and betrayal set in 1930's Germany.\
+Players are secretly divided into two teams - liberals and fascists.\
+Known only to each other, the fascists coordinate to sow distrust and install their cold-blooded leader.\
+The liberals must find and stop the Secret Hitler before it is too late.
+"""
+        self.asset_folder = 'SecretHitler/assets/'
+        self.load_image = image_merge('_secret.png', '_hitler.png', asset_folder=self.asset_folder)
         
         self.player_nodes = LinkedList()
         # Keeps track of enacted policies
@@ -194,24 +203,28 @@ class SecretHitler(Game):
 
         elif self.stage == 'president':
             self.policies = [self.policy_deck.pop() for _ in range(3)]
-            message = ', '.join([policy.card_type.title() for policy in self.policies])
+            policy_names = [policy.card_type.title() for policy in self.policies]
+            message = ', '.join(policy_names)
             # Separate the policies with spaces (e.g. `$policy fascist fascist`)
+            image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
             await self.send_message(f'Choose two policies to send to the Chancellor, {self.chancellor.name}.',
                 title=f'Policies: {message}', channel=self.president.dm_channel, footer=self.president.name,
-                image='https://via.placeholder.com/500x250')
+                image=image)
 
             # Bot chooses two policies
             if self.president.test_player:
                 self.policies = bot_action.send_policies(self.policies)
                 await self.send_message(f'The President has sent two policies to the Chancellor,\
                     {self.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
-                message = ', '.join([policy.card_type.title() for policy in self.policies])
+                policy_names = [policy.card_type.title() for policy in self.policies]
+                message = ', '.join(policy_names)
+                image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
                 if self.board['fascist'] >= 5:
                     await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
                         may choose to invoke his veto power and discard both policies')
                     message += ' - Veto Allowed'
                 await self.send_message('Choose a policy to enact.', title=f'Policies: {message}',
-                    channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
+                    channel=self.chancellor.dm_channel, footer=self.chancellor.name, image=image)
                 self.next_stage()
                 await self.tick()
 
@@ -305,7 +318,6 @@ class SecretHitler(Game):
             self.rounds += 1
             self.next_stage()
             await self.tick()
-           
 
     async def assign_identities(self):
         """Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)."""
@@ -321,6 +333,11 @@ class SecretHitler(Game):
             # Indicate what identity a player has and inform related parties
             fascists = []
             hitler = None
+            counts = {
+                'Hitler': 0,
+                'Liberal': 0,
+                'Fascist': 0
+            }
             for player, identity in zip(self.players, identities):
                 player.identity = identity
                 if identity == 'Hitler':
@@ -328,7 +345,9 @@ class SecretHitler(Game):
                 elif identity == 'Fascist':
                     fascists.append(player)
                 article = 'a ' if identity != 'Hitler' else ''
-                await self.send_message(f'You are {article}{identity}.', channel=player.dm_channel, footer=player.name)
+                image = f'{identity.lower()}_{counts[identity]}.png'
+                await self.send_message(f'You are {article}{identity}.', channel=player.dm_channel, footer=player.name, image=image)
+                counts[identity] += 1
             for fascist in fascists:
                 team = [f.name for f in fascists if f.name != fascist.name]
                 if len(team):

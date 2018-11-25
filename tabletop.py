@@ -142,7 +142,7 @@ async def load_game(ctx, *game_name: str):
     """Loads the game for players to join and configures player joining."""
     # If a game is already running, unload it first.
     if bot.game:
-        await unload_game(ctx)
+        await ctx.invoke(unload_game)
     game_name = ' '.join(game_name)
     default = ''
     # DEFAULT GAME
@@ -161,8 +161,8 @@ async def load_game(ctx, *game_name: str):
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    msg = f'{default}{game} loaded.'
-    await ctx.send(embed=Embed(title=msg, color=EmbedColor.SUCCESS))
+    msg = f'{game_name} loaded!'
+    await game.send_message(game.load_message, title=msg, color=EmbedColor.SUCCESS, image=game.load_image)
     print(msg)
 
 @bot.command(aliases=['unload'])

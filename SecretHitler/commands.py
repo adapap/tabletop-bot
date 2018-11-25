@@ -142,13 +142,15 @@ class Cog:
         del self.game.policies[given_policies.index(policy)]
         await self.game.send_message(f'The President has sent two policies to the Chancellor,\
             {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
-        message = ', '.join([policy.card_type.title() for policy in self.game.policies])
+        policy_names = [policy.card_type.title() for policy in self.policies]
+        message = ', '.join(policy_names)
+        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
         if self.game.board['fascist'] >= 5:
             await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
                 may choose to invoke his veto power and discard both policies')
             message += ' - Veto Allowed'
         await self.game.send_message('Choose a policy to enact.', title=f'Policies: {message}',
-            channel=self.game.chancellor.dm_channel, footer=self.game.chancellor.name, image='https://via.placeholder.com/500x250')
+            channel=self.game.chancellor.dm_channel, footer=self.game.chancellor.name, image=image)
         self.game.next_stage()
         # Chancellor is a bot
         if self.game.chancellor.test_player:

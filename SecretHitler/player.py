@@ -30,3 +30,6 @@ class Player:
 
     def __repr__(self):
         return f'<Player: {self.name}>'
+
+    def __str__(self):
+        return self.name
