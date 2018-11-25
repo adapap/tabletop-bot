@@ -16,20 +16,21 @@ from importlib import import_module
 from game import Game
 from utils import *
 
-class Cardbot:
+class Cardbot(commands.Bot):
     """Handles the setup and instancing of different games."""
     games = {}
-    def __init__(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.game = None
 
         rootdir = os.getcwd()
-        ignore_dirs = ['.git', '__pycache__', 'cardbot-env']
+        ignore_dirs = ['.git', '__pycache__', 'tabletop-env']
 
         # Import all game folders, import them, and store their classes
         for d in os.listdir(rootdir):
             if os.path.isdir(os.path.join(rootdir, d)) and d not in ignore_dirs:
                 game_name = self.to_snake_case(d)
-                import_module(f'{d}.{game_name}', package='cardbot')
+                import_module(f'{d}.{game_name}', package='tabletop')
                 game_class = getattr(sys.modules[f'{d}.{game_name}'], d)
                 self.games[d] = game_class
 
@@ -54,7 +55,7 @@ class Cardbot:
         return f'<Active Game: {self.game}>'
 
 
-bot = commands.Bot(command_prefix='$', description='''A discord tabletop bot.''')
+bot = Cardbot(command_prefix='$', description='''A discord tabletop bot.''')
 bot.remove_command('help')
 
 def has_role(self, rolename):
@@ -63,10 +64,11 @@ def has_role(self, rolename):
 discord.Member.has_role = has_role
 
 @bot.command(aliases=['test'])
-async def debug(ctx, *params: str):
+async def debug(ctx, *params: lower):
     """General purpose test command."""
     await ctx.send(params)
 
+@commands.guild_only()
 @bot.command(aliases=['purge', 'del', 'delete'])
 async def clear(ctx, number=1):
     """Removes the specified number of messages."""
@@ -115,7 +117,7 @@ async def _eval(ctx, *, cmd):
     env = {
         'bot': ctx.bot,
         'discord': discord,
-        'game': bot.cardbot.game,
+        'game': bot.game,
         'commands': commands,
         'ctx': ctx,
         '__import__': __import__
@@ -132,14 +134,14 @@ async def _eval(ctx, *, cmd):
 @bot.command(aliases=['game_list', 'gamelist'])
 async def games(ctx):
     """Returns a list of available games to play."""
-    game_list = '\n'.join([x().name for x in cardbot.games.values()])
+    game_list = '\n'.join([x().name for x in bot.games.values()])
     await ctx.send(embed=Embed(title='Games', description=game_list, color=EmbedColor.INFO))
 
 @bot.command(aliases=['load'])
 async def load_game(ctx, *game_name: str):
     """Loads the game for players to join and configures player joining."""
     # If a game is already running, unload it first.
-    if cardbot.game:
+    if bot.game:
         await unload_game(ctx)
     game_name = ' '.join(game_name)
     default = ''
@@ -148,10 +150,10 @@ async def load_game(ctx, *game_name: str):
         default = '(default) '
         game_name = 'Secret Hitler'
     name = re.sub(r'\s*', '', game_name)
-    if name not in cardbot.games:
+    if name not in bot.games:
         await ctx.send(embed=Embed(title=f'The game {game_name} is not available.', color=EmbedColor.ERROR))
         return
-    game = cardbot.load_game(name)
+    game = bot.load_game(name)
     game.channel = ctx.message.channel
     assert hasattr(game, 'start_game')
     try:
@@ -159,21 +161,21 @@ async def load_game(ctx, *game_name: str):
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    msg = f'{default}{game_name} loaded.'
+    msg = f'{default}{game} loaded.'
     await ctx.send(embed=Embed(title=msg, color=EmbedColor.SUCCESS))
     print(msg)
 
 @bot.command(aliases=['unload'])
 async def unload_game(ctx):
     """Removes all commands and unloads the current game."""
-    if not cardbot.game:
+    if not bot.game:
         await ctx.send(embed=Embed(title=f'There is no game running. Use `$load [game]` to start a game.', color=EmbedColor.WARN))
         return
-    game_name = cardbot.game.name
+    game_name = bot.game.name
     name = re.sub(r'\s*', '', game_name)
     try:
         bot.unload_extension(f'{name}.commands')
-        cardbot.game = None
+        bot.game = None
     except Exception as e:
         print(f'Unloading failed.', file=sys.stderr)
         traceback.print_exc()
@@ -184,8 +186,8 @@ async def unload_game(ctx):
 @bot.command(aliases=['start'])
 async def start_game(ctx):
     """Starts the current game through the game's start_game method."""
-    await bot.change_presence(activity=discord.Game(name=cardbot.game.name))
-    await cardbot.game.start_game()
+    await bot.change_presence(activity=discord.Game(name=bot.game.name))
+    await bot.game.start_game()
 
 @bot.event
 async def on_ready():
@@ -211,12 +213,10 @@ async def on_command_error(ctx, error):
         print(error)
         return
     else:
+        print(error)
         await ctx.send(embed=Embed(description=f'```python\n{error}```', color=EmbedColor.ERROR))
 
 if __name__ == '__main__':
-    cardbot = Cardbot()
-    bot.cardbot = cardbot
-
     with open('token.json') as file:
         data = json.loads(file.read())
         token = data['token']

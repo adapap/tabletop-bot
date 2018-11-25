@@ -13,8 +13,7 @@ from utils import *
 class Cog:
     def __init__(self, bot):
         self.bot = bot
-        self.cardbot = bot.cardbot
-        self.game = self.cardbot.game
+        self.game = self.bot.game
 
     @commands.command()
     async def join(self, ctx, test_player: str='', repeat: int=1):
@@ -81,7 +80,7 @@ class Cog:
         game = self.game
         if not game.stage == 'election':
             await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
-        player = game.find_player(ctx.author.id).data
+        player = game.find_player(ctx.author.id)
         if type(channel) == discord.channel.DMChannel:
             if vote not in ['ja', 'nein']:
                 await ctx.send(embed=Embed(description='Your vote must either be "ja" or "nein".', color=EmbedColor.ERROR))
@@ -140,16 +139,16 @@ class Cog:
             if policy not in ['fascist', 'liberal']:
                 await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player_dm, color=EmbedColor.ERROR)
                 return
-            self.game.policies.remove(given_policies.index(policy))
+        del self.game.policies[given_policies.index(policy)]
         await self.game.send_message(f'The President has sent two policies to the Chancellor,\
             {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
-        message = ', '.join([policy.card_type.title() for policy in self.policies])
+        message = ', '.join([policy.card_type.title() for policy in self.game.policies])
         if self.game.board['fascist'] >= 5:
             await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
                 may choose to invoke his veto power and discard both policies')
             message += ' - Veto Allowed'
         await self.game.send_message('Choose a policy to enact.', title=f'Policies: {message}',
-            channel=self.chancellor.dm_channel, footer=self.chancellor.name, image='https://via.placeholder.com/500x250')
+            channel=self.game.chancellor.dm_channel, footer=self.game.chancellor.name, image='https://via.placeholder.com/500x250')
         self.game.next_stage()
         # Chancellor is a bot
         if self.game.chancellor.test_player:

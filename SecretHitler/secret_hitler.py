@@ -81,7 +81,8 @@ class SecretHitler(Game):
 
     def find_player(self, _id):
         """Finds a player by ID."""
-        return self.player_nodes.find(_id, attr='id')
+        node = self.player_nodes.find(_id, attr='id')
+        return node.data if node else None
 
     async def add_player(self, discord_member: discord.Member):
         """Adds a player to the current game."""
@@ -100,7 +101,7 @@ class SecretHitler(Game):
     async def remove_player(self, player, bot=False):
         """Removes a player from the game cycle."""
         if not bot:
-            node = self.find_player(player.id)
+            node = self.player_nodes.find(player.id, attr='id')
         else:
             node = self.player_nodes.find(player, attr='name')
         if not node:
@@ -176,7 +177,7 @@ class SecretHitler(Game):
             if voting_results:
                 self.chancellor_rejections = 0
                 self.chancellor = self.nominee
-                await self.send_message(f'The Chancellor was voted in! The President must now send two policies to the Chancellor.', color=EmbedColor.SUCCESS)
+                await self.send_message(f'The Chancellor was voted in! The President, {self.president.name}, must now send two policies to the Chancellor.', color=EmbedColor.SUCCESS)
                 if self.board['fascist'] >= 3 and self.chancellor.identity == 'Hitler':
                     message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler,\
                      and with 3 or more fascist policies in place, the Fascists win!'
@@ -281,6 +282,7 @@ class SecretHitler(Game):
                 self.do_exec_act = False
                 hitler_killed = await self.executive_action()
                 if hitler_killed:
+                    self.started = False
                     return
             
             # Reset player properties - comment this out for now as we're not using it
@@ -307,35 +309,37 @@ class SecretHitler(Game):
 
     async def assign_identities(self):
         """Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)."""
-        identities = ['Hitler']
-        # Add appropriate fascists depending on player count
-        identities.extend(['Fascist'] * ((self.player_count - 3) // 2))
-        # Remaining identities are filled with liberals
-        identities.extend(['Liberal'] * ((self.player_count - len(identities))))
-        shuffle(identities)
-        
-        # Indicate what identity a player has and inform related parties
-        fascists = []
-        hitler = None
-        for player, identity in zip(self.players, identities):
-            player.identity = identity
-            if identity == 'Hitler':
-                hitler = player
-            elif identity == 'Fascist':
-                fascists.append(player)
-            article = 'a ' if identity != 'Hitler' else ''
-            await self.send_message(f'You are {article}{identity}.', channel=player.dm_channel, footer=player.name)
-        for fascist in fascists:
-            team = [f.name for f in fascists if f.name != fascist.name]
-            if len(team):
-                team = 'The other Fascists are:\n' + '\n'.join(team)
-            else:
-                team = 'You are the only Fascist'
-            message = f'{team}\n{hitler.name} is Hitler'
-            await self.send_message(message, channel=fascist.dm_channel, footer=fascist.name)
-        if len(fascists) == 1:
-            message = f'{fascists[0].name} is a Fascist'
-            await self.send_message(message, channel=hitler.dm_channel, footer=hitler.name)
+        # Since this takes a long time, show that a process is occurringf
+        async with self.channel.typing():
+            identities = ['Hitler']
+            # Add appropriate fascists depending on player count
+            identities.extend(['Fascist'] * ((self.player_count - 3) // 2))
+            # Remaining identities are filled with liberals
+            identities.extend(['Liberal'] * ((self.player_count - len(identities))))
+            shuffle(identities)
+            
+            # Indicate what identity a player has and inform related parties
+            fascists = []
+            hitler = None
+            for player, identity in zip(self.players, identities):
+                player.identity = identity
+                if identity == 'Hitler':
+                    hitler = player
+                elif identity == 'Fascist':
+                    fascists.append(player)
+                article = 'a ' if identity != 'Hitler' else ''
+                await self.send_message(f'You are {article}{identity}.', channel=player.dm_channel, footer=player.name)
+            for fascist in fascists:
+                team = [f.name for f in fascists if f.name != fascist.name]
+                if len(team):
+                    team = 'The other Fascists are:\n' + '\n'.join(team)
+                else:
+                    team = 'You are the only Fascist'
+                message = f'{team}\n{hitler.name} is Hitler'
+                await self.send_message(message, channel=fascist.dm_channel, footer=fascist.name)
+            if len(fascists) == 1:
+                message = f'{fascists[0].name} is a Fascist'
+                await self.send_message(message, channel=hitler.dm_channel, footer=hitler.name)
 
     async def start_game(self):
         """Checks if the game can start and assigns roles to players."""
