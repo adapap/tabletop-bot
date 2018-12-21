@@ -48,9 +48,7 @@ class Cog:
         """Uses discord command $nominate to elect a chancellor."""
         member = None
         game = self.game
-        if not game.stage == 'nomination':
-            await game.send_message('It is not time to nominate.', color=EmbedColor.WARN)
-        elif ctx.author.id != game.president.id:
+        if ctx.author.id != game.president.id:
             await game.send_message('You are not the President.', color=EmbedColor.WARN)
         elif player.startswith('Bot'):
             try:
@@ -78,8 +76,6 @@ class Cog:
         """Reads votes from DMs to determine election status."""
         channel = ctx.message.channel
         game = self.game
-        if not game.stage == 'election':
-            await game.send_message('It is not time to vote.', color=EmbedColor.WARN)
         player = game.find_player(ctx.author.id)
         if type(channel) == discord.channel.DMChannel:
             if vote not in ['ja', 'nein']:
@@ -122,6 +118,7 @@ class Cog:
         channel = ctx.message.channel
         player_dm = self.game.president.dm_channel
         given_policies = [p.card_type for p in self.game.policies]
+        policies = list(policies)
         if ctx.author.id != self.game.president.id:
             return
         if not type(channel) == discord.channel.DMChannel:
@@ -139,12 +136,16 @@ class Cog:
             if policy not in ['fascist', 'liberal']:
                 await self.game.send_message('You must choose a "fascist" or "liberal" policy.', channel=player_dm, color=EmbedColor.ERROR)
                 return
-        del self.game.policies[given_policies.index(policy)]
+        for policy_obj in self.game.policies[:]:
+            if policy_obj.card_type in policies:
+                policies.remove(policy_obj.card_type)
+            else:
+                self.game.policies.remove(policy_obj)
         await self.game.send_message(f'The President has sent two policies to the Chancellor,\
             {self.game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
-        policy_names = [policy.card_type.title() for policy in self.policies]
+        policy_names = [policy.card_type.title() for policy in self.game.policies]
         message = ', '.join(policy_names)
-        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
+        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.game.asset_folder, pad=True)
         if self.game.board['fascist'] >= 5:
             await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
                 may choose to invoke his veto power and discard both policies')
@@ -154,7 +155,7 @@ class Cog:
         self.game.next_stage()
         # Chancellor is a bot
         if self.game.chancellor.test_player:
-            await self.tick()
+            await self.game.tick()
 
     @commands.command(aliases=['enact'])
     @verify.game_started()
@@ -209,6 +210,42 @@ class Cog:
                 self.game.next_stage()
                 await self.game.tick()
 
+    @commands.command()
+    @verify.game_started()
+    @verify.stage('executive_action')
+    async def execute(self, ctx, player: str=''):
+        game = self.game
+        if ctx.author.id != game.president.id:
+            await game.send_message('You are not the President.', color=EmbedColor.WARN)
+            return
+        elif player.startswith('Bot'):
+            try:
+                member = game.players[[player.name for player in game.players].index(player)]
+            except ValueError:
+                await game.send_message(f'There is no bot named {player}.', color=EmbedColor.ERROR)
+                return
+        else:
+            if len(ctx.message.mentions) != 1:
+                await game.send_message('Invalid execution. @mention the player you would like to execute.', color=EmbedColor.WARN)
+                return
+            else:
+                member = game.find_player(ctx.message.mentions[0].id)
+                if not member:
+                    await game.send_message('Invalid execution. Player is not in the game.', color=EmbedColor.WARN)
+                    return
+        
+        if member == game.president:
+            await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
+            return
 
+        player_node = game.player_nodes.find(member.id, attr='id')
+        game.player_nodes.remove(player_node)
+        if member.identity == 'Hitler':
+            await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+            self.hitler_dead = True
+            self.started = False
+        else:
+            await self.send_message(f'{victim.name} was executed.')
+            await self.reset_rounds()
 def setup(bot):
     bot.add_cog(Cog(bot))

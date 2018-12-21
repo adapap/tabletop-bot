@@ -22,9 +22,9 @@ class SecretHitler(Game):
         super().__init__()
 
         self.load_message = """\
-Secret Hitler is a dramatic game of political intrigue and betrayal set in 1930's Germany.\
-Players are secretly divided into two teams - liberals and fascists.\
-Known only to each other, the fascists coordinate to sow distrust and install their cold-blooded leader.\
+Secret Hitler is a dramatic game of political intrigue and betrayal set in 1930's Germany. \
+Players are secretly divided into two teams - liberals and fascists. \
+Known only to each other, the fascists coordinate to sow distrust and install their cold-blooded leader. \
 The liberals must find and stop the Secret Hitler before it is too late.
 """
         self.asset_folder = 'SecretHitler/assets/'
@@ -53,6 +53,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.special_president = None
         self.special_election = False
         self.do_exec_act = False
+        self.hitler_dead = False
         self.previously_investigated = []
         self.generate_deck()
 
@@ -114,7 +115,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         else:
             node = self.player_nodes.find(player, attr='name')
         if not node:
-            await self.send_message(f'You are not in the current game.', color=EmbedColor.ERROR)
+            await self.send_message(f'That player is not in the current game.', color=EmbedColor.ERROR)
         else:
             self.player_nodes.remove(node)
             await self.send_message(f'{node.data.name} left the game.')
@@ -150,20 +151,29 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
-            await exec_action.policy_peek()
+            await exec_action.policy_peek(self)
+            policies = ', '.join([policy.card_type for policy in self.policy_deck[:3]])
+            await self.send_message(f'Top 3 Policies: {policies}',
+                channel=self.president.dm_channel)
+            await self.reset_rounds()
 
         # TODO: Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count > 7:
-            await exec_action.special_election()
+            await exec_action.special_election(self)
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
-            victim = exec_action.execution()
-            if victim.identity == 'Hitler':
-                await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
-                return True
-            await self.send_message(f'{victim.name} was executed.')
-        return False
+            await self.send_message('The President must now execute a player!')
+            if self.president.test_player:
+                victim = await exec_action.execution(self)
+                if victim.identity == 'Hitler':
+                    await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+                    self.hitler_dead = True
+                    self.started = False
+                    return
+                else:
+                    await self.send_message(f'{victim.name} was executed.')
+                    await self.reset_rounds()
 
     async def tick(self, voting_results: bool=None):
         """Handles the turn-by-turn logic of the game."""
@@ -191,7 +201,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
                     message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler,\
                      and with 3 or more fascist policies in place, the Fascists win!'
                     await self.send_message(message, color=EmbedColor.ERROR)
-                    return
+                    #PLEASE UNCOMMENT return
                 self.next_stage()
                 await self.tick()
             else:
@@ -248,6 +258,8 @@ The liberals must find and stop the Secret Hitler before it is too late.
                         await self.tick()
                 else:
                     self.board[enacted.card_type] += 1
+                    if enacted.card_type == 'fascist':
+                        self.do_exec_act = True
                     await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
                     self.next_stage()
                     await self.tick()
@@ -293,31 +305,36 @@ The liberals must find and stop the Secret Hitler before it is too late.
             
             if self.do_exec_act:
                 self.do_exec_act = False
-                hitler_killed = await self.executive_action()
-                if hitler_killed:
-                    self.started = False
-                    return
-            
-            # Reset player properties - comment this out for now as we're not using it
-            for player in self.players:
-                player.last_chancellor = False
-                player.last_president = False
-                player.voted = False
-                player.veto = False
+                self.stage = 'executive_action'
+                await self.executive_action()
+            else:
+                # Reset player properties - comment this out for now as we're not using it
+                await self.reset_rounds()
 
-            self.votes = {
-                'ja': [],
-                'nein': []
-            }
-            
-            if self.chancellor:
-                self.chancellor.last_chancellor = True
-            if self.president:
-                self.president.last_president = True
+    async def reset_rounds(self):
+        """Resets the round after displaying the summary."""
+        if self.hitler_dead:
+            return
 
-            self.rounds += 1
-            self.next_stage()
-            await self.tick()
+        for player in self.players:
+            player.last_chancellor = False
+            player.last_president = False
+            player.voted = False
+            player.veto = False
+
+        self.votes = {
+            'ja': [],
+            'nein': []
+        }
+        
+        if self.chancellor:
+            self.chancellor.last_chancellor = True
+        if self.president:
+            self.president.last_president = True
+
+        self.rounds += 1
+        self.next_stage()
+        await self.tick()
 
     async def assign_identities(self):
         """Randomly assigns identities to players (Hitler, Liberal, Fascist, etc.)."""

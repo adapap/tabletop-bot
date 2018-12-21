@@ -1,3 +1,5 @@
+from random import choice
+
 async def investigate_loyalty(self):
     """The President discovers another player's identity."""
     await self.send_message('The President must investigate another player\'s identity!')
@@ -21,8 +23,6 @@ async def investigate_loyalty(self):
 async def policy_peek(self):
     """The President sees the next three policy cards."""
     await self.send_message('The President will now peek at the top three policies in the deck!')
-    await self.send_message(f'{self.policy_deck[0].card_type}, {self.policy_deck[1].card_type}, {self.policy_deck[2].card_type}',
-        channel=self.president.dm_channel)
 
 async def special_election(self):
     """The President elects a new President."""
@@ -37,14 +37,7 @@ async def special_election(self):
 
 async def execution(self):
     """The President executes a player."""
-    await self.send_message('The President must now execute a player!')
-    # Should be replaced with actual choosing procedure
-    valid = set(self.players) - set([self.president])
-    victim = choice(list(valid))
-
-    while victim == self.president:
-        await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
-        victim = choice(list(valid))
-
+    valid = [node for node in self.player_nodes if node.data != self.president]
+    victim = choice(valid)
     self.player_nodes.remove(victim)
-    return victim
+    return victim.data

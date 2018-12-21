@@ -15,6 +15,8 @@ class PolicyCard(Card):
     def __init__(self, *, img_src: str, card_type: str):
         super().__init__(img_src=img_src)
         self.card_type = card_type
+    def __repr__(self):
+        return f'PolicyCard(card_type={self.card_type})'
 
 
 class IdentityCard(Card):
@@ -77,14 +79,3 @@ class FascistBoard(Board):
     """Fascist board object."""
     def __init__(self):
         super().__init__(policy=Policy(x=220, y=200, offset=492, _type='fascist'))
-
-
-# l = LiberalBoard()
-# for i in range(0, 5):
-#   l.add_policy()
-# l.show_board()
-
-# f = FascistBoard()
-# for i in range(0, 6):
-#   f.add_policy()
-# f.show_board()

@@ -203,7 +203,7 @@ async def on_ready():
     print(uid_message)
     print('Prefix:', '$')
     print(separator)
-    await bot.change_presence(activity=discord.Game(name='awesome games'))
+    await bot.change_presence(activity=discord.Game(name='tabletop games!'))
 
 @bot.event
 async def on_command_error(ctx, error):
