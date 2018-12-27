@@ -176,11 +176,11 @@ class Cog:
             await self.game.send_message('You must enact a policy that was given to you.', channel=player_dm, color=EmbedColor.ERROR)
             return
         enacted = self.game.policies.pop(given_policies.index(policy))
-        self.game.board[enacted.card_type] += 1
-        await self.game.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
-
         if enacted.card_type == 'fascist':
             self.game.do_exec_act = True
+        self.game.board[enacted.card_type] += 1
+        await self.game.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+        
         self.game.next_stage()
         await self.game.tick()
 
@@ -235,17 +235,18 @@ class Cog:
                     return
         
         if member == game.president:
-            await self.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
+            await game.send_message('You may not execute yourself!', color=EmbedColor.ERROR)
             return
 
         player_node = game.player_nodes.find(member.id, attr='id')
         game.player_nodes.remove(player_node)
+        victim = player_node.data
         if member.identity == 'Hitler':
-            await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
-            self.hitler_dead = True
-            self.started = False
+            await game.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+            game.hitler_dead = True
+            game.started = False
         else:
-            await self.send_message(f'{victim.name} was executed.')
-            await self.reset_rounds()
+            await game.send_message(f'{victim.name} was executed.')
+            await game.reset_rounds()
 def setup(bot):
     bot.add_cog(Cog(bot))

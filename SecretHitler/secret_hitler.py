@@ -144,6 +144,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
     async def executive_action(self): 
         """Manages the executive actions that the President must do after a fascist policy is passed."""
+        self.stage = 'executive_action'
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
@@ -152,9 +153,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
             await exec_action.policy_peek(self)
-            policies = ', '.join([policy.card_type for policy in self.policy_deck[:3]])
-            await self.send_message(f'Top 3 Policies: {policies}',
-                channel=self.president.dm_channel)
+            policy_names = [policy.card_type.title() for policy in self.policy_deck[:3]]
+            message = ', '.join(policy_names)
+            image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
+            await self.send_message('', title=f'Top 3 Policies: {message}',
+                channel=self.president.dm_channel, footer=self.president.name, image=image)
             await self.reset_rounds()
 
         # TODO: Executive Action - Special Election
@@ -174,6 +177,10 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 else:
                     await self.send_message(f'{victim.name} was executed.')
                     await self.reset_rounds()
+
+        # Executive action does not apply
+        else:
+            await self.reset_rounds()
 
     async def tick(self, voting_results: bool=None):
         """Handles the turn-by-turn logic of the game."""
@@ -250,10 +257,9 @@ The liberals must find and stop the Secret Hitler before it is too late.
                             color=EmbedColor.SUCCESS)
                     else:
                         self.board[enacted.card_type] += 1
-                        await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
-
                         if enacted.card_type == 'fascist':
                             self.do_exec_act = True
+                        await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
                         self.next_stage()
                         await self.tick()
                 else:
@@ -305,10 +311,8 @@ The liberals must find and stop the Secret Hitler before it is too late.
             
             if self.do_exec_act:
                 self.do_exec_act = False
-                self.stage = 'executive_action'
                 await self.executive_action()
             else:
-                # Reset player properties - comment this out for now as we're not using it
                 await self.reset_rounds()
 
     async def reset_rounds(self):

@@ -6,7 +6,8 @@ def choose_chancellor(valid):
 
 def vote():
     """Bot function: Either votes Ja or Nein."""
-    return choice(['ja', 'nein'])
+    return 'ja'
+    # return choice(['ja', 'nein'])
 
 def send_policies(policies):
     """Bot function: Choose two random policies to send to the Chancellor."""
