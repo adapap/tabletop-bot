@@ -52,12 +52,16 @@ class LinkedList:
         self.length += 1
 
     def find(self, value, attr=None):
-        """Finds an element with an attribute equal to key."""
-        if self.head is None:
+        """Finds a node whose data has an attribute equal to key."""
+        node = self.head
+        if node is None:
             return None
-        for elem in self:
-            if (attr is None and elem.data == value) or (attr is not None and getattr(elem.data, attr) == value):
-                return elem
+        while node.next != self.head:
+            if (attr is None and node.data == value) or (attr is not None and getattr(node.data, attr) == value):
+                return node
+            node = node.next
+        if (attr is None and node.data == value) or (attr is not None and getattr(node.data, attr) == value):
+            return node
         return None
 
     def remove(self, node):

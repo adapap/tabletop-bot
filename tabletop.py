@@ -44,6 +44,7 @@ class Cardbot(commands.Bot):
         if name not in self.game_list:
             raise KeyError(f'Cardbot does not support the game: {name}')
         self.game = self.games[name]()
+        self.game.bot = self
         return self.game
 
     def to_snake_case(self, s: str):
@@ -66,7 +67,9 @@ discord.Member.has_role = has_role
 @bot.command(aliases=['test'])
 async def debug(ctx, *params: lower):
     """General purpose test command."""
-    await ctx.send(params)
+    from unittest import mock
+    mock_user = mock.Mock(spec=discord.User)
+    await ctx.send(mock_user)
 
 @commands.guild_only()
 @bot.command(aliases=['purge', 'del', 'delete'])
@@ -207,14 +210,36 @@ async def on_ready():
 
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.errors.CheckFailure):
-        await ctx.send(embed=Embed(description='You cannot use that command at this time.', color=EmbedColor.ERROR))
-    elif isinstance(error, commands.errors.CommandNotFound):
-        print(error)
+    if hasattr(ctx.command, 'on_error'):
         return
-    else:
-        print(error)
-        await ctx.send(embed=Embed(description=f'```python\n{error}```', color=EmbedColor.ERROR))
+
+    error = getattr(error, 'original', error)
+    if isinstance(error, commands.CommandNotFound):
+        return
+
+    if isinstance(error, commands.BotMissingPermissions):
+        missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_perms]
+        if len(missing) > 2:
+            fmt = '{}, and {}'.format("**, **".join(missing[:-1]), missing[-1])
+        else:
+            fmt = ' and '.join(missing)
+        _message = 'I need the **{}** permission(s) to run this command.'.format(fmt)
+        await ctx.send(_message)
+        return
+
+    if isinstance(error, commands.MissingPermissions):
+        missing = [perm.replace('_', ' ').replace('guild', 'server').title() for perm in error.missing_perms]
+        if len(missing) > 2:
+            fmt = '{}, and {}'.format("**, **".join(missing[:-1]), missing[-1])
+        else:
+            fmt = ' and '.join(missing)
+        _message = 'You need the **{}** permission(s) to use this command.'.format(fmt)
+        await ctx.send(_message)
+        return
+
+    error_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
+    await ctx.send(embed=Embed(title=f'{type(error).__name__}', description=f'```python\n{error_str[-2000:]}```', color=EmbedColor.ERROR))
+    print(error_str)
 
 if __name__ == '__main__':
     with open('token.json') as file:

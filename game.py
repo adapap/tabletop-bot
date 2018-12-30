@@ -9,9 +9,23 @@ class Game:
     def __init__(self):
         self.channel = None
         self.bot = None
+        self.bots = {}
         self.started = False
         self.game_info = True
         self.asset_folder = ''
+
+        self.emojis = {
+            1: ':one:',
+            2: ':two:',
+            3: ':three:',
+            4: ':four:',
+            5: ':five:',
+            6: ':six:',
+            7: ':seven:',
+            8: ':eight:',
+            9: ':nine:',
+            0: ':zero:'
+        }
 
     @property
     def player_count(self):
@@ -24,11 +38,6 @@ class Game:
         return [player.id for player in self.players]
 
     @property
-    def bots(self):
-        """Returns a list of players in the game that are bots."""
-        return [player for player in self.players if player.test_player]
-
-    @property
     def bot_count(self):
         """Returns the number of bots in the game."""
         return len(self.bots)
@@ -38,7 +47,7 @@ class Game:
         """Returns the time elapsed since the start of the game."""
         return 1
 
-    async def send_message(self, description: str, *, 
+    async def send_message(self, description: str='', *, 
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
         """
         An embed constructor which sends a message to the channel.
@@ -63,9 +72,9 @@ class Game:
             image_path = self.asset_folder + image
             file = discord.File(image_path, filename='image.png')
             embed.set_image(url='attachment://image.png')
-            await channel.send(embed=embed, file=file)
+            return await channel.send(embed=embed, file=file)
         else:
-            await channel.send(embed=embed)
+            return await channel.send(embed=embed)
 
     async def start_game(self):
         """Subclasses, or games, must implement this method."""
