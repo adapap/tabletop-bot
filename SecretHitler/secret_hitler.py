@@ -147,13 +147,13 @@ The liberals must find and stop the Secret Hitler before it is too late.
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
             await self.send_message("The President must now investigate another player's loyalty!")
             if self.president.test_player:
-                suspect = await exec_action.investigate_player(self)
+                suspect = await exec_action.investigate_loyalty(self)
                 self.previously_investigated.append(suspect)
                 identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
-                image = f'{identity.lower()}_{randint(0,5)}.png'
+                image = f'party_{identity.lower()}.png'
                 await self.send_message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
+                await self.reset_rounds()
                 
-
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
             await exec_action.policy_peek(self)

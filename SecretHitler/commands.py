@@ -322,7 +322,7 @@ class Cog:
         suspect = player_node.data
         game.previously_investigated.append(suspect)
         identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
-        image = f'{identity.lower()}_{randint(0,5)}.png'
+        image = f'party_{identity.lower()}.png'
         await game.send_message(f'{suspect.name} is a {identity}.', channel=game.president.dm_channel, footer=game.president.name, image=image)
         await game.reset_rounds()
 
