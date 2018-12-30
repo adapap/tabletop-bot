@@ -9,6 +9,7 @@ from . import bot_action
 from . import verify
 from game import Game
 from utils import *
+from random import shuffle, choice, sample, randint
 
 class Cog:
     def __init__(self, bot):
@@ -50,20 +51,24 @@ class Cog:
         game = self.game
         if ctx.author.id != game.president.id:
             await game.send_message('You are not the President.', color=EmbedColor.WARN)
+            return
         elif player.startswith('Bot'):
             try:
                 member = game.players[[player.name for player in game.players].index(player)]
             except ValueError:
                 await game.send_message(f'There is no bot named {player}.', color=EmbedColor.ERROR)
+                return
         else:
             if len(ctx.message.mentions) != 1:
                 await game.send_message('Invalid nomination. @mention the player you would like to nominate.', color=EmbedColor.WARN)
+                return
             else:
                 member = game.find_player(ctx.message.mentions[0].id)
         # Logic
-        if member == game.prev_president or member == game.prev_chancellor or member.id == ctx.author.id:
+        if member.had_position or member.id == ctx.author.id:
             await game.send_message('This player is ineligible to be nominated as Chancellor.\
                 Please choose another chancellor.', color=EmbedColor.ERROR)
+            return
         else:
             game.nominee = member
             await game.send_message(f'{game.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
@@ -248,5 +253,78 @@ class Cog:
         else:
             await game.send_message(f'{victim.name} was executed.')
             await game.reset_rounds()
+
+    @commands.command()
+    @verify.game_started()
+    @verify.stage('executive_action')
+    async def appoint(self, ctx, player: str=''):
+        game = self.game
+        if ctx.author.id != game.president.id:
+            await game.send_message('You are not the President.', color=EmbedColor.WARN)
+            return
+        elif player.startswith('Bot'):
+            try:
+                member = game.players[[player.name for player in game.players].index(player)]
+            except ValueError:
+                await game.send_message(f'There is no bot named {player}.', color=EmbedColor.ERROR)
+                return
+        else:
+            if len(ctx.message.mentions) != 1:
+                await game.send_message('Invalid appointment. @mention the player you would like to appoint.', color=EmbedColor.WARN)
+                return
+            else:
+                member = game.find_player(ctx.message.mentions[0].id)
+                if not member:
+                    await game.send_message('Invalid appointment. Player is not in the game.', color=EmbedColor.WARN)
+                    return
+        
+        if member == game.president:
+            await game.send_message('You may not appoint yourself!', color=EmbedColor.ERROR)
+            return
+
+        player_node = game.player_nodes.find(member.id, attr='id')
+        game.president.last_president = True
+        new_president = player_node.data
+        game.president = new_president
+        game.special_election = True
+        await game.send_message(f'{new_president.name} was appointed.')
+        await game.reset_rounds()
+
+    @commands.command()
+    @verify.game_started()
+    @verify.stage('executive_action')
+    async def investigate(self, ctx, player: str=''):
+        game = self.game
+        if ctx.author.id != game.president.id:
+            await game.send_message('You are not the President.', color=EmbedColor.WARN)
+            return
+        elif player.startswith('Bot'):
+            try:
+                member = game.players[[player.name for player in game.players].index(player)]
+            except ValueError:
+                await game.send_message(f'There is no bot named {player}.', color=EmbedColor.ERROR)
+                return
+        else:
+            if len(ctx.message.mentions) != 1:
+                await game.send_message('Invalid investigation. @mention the player you would like to appoint.', color=EmbedColor.WARN)
+                return
+            else:
+                member = game.find_player(ctx.message.mentions[0].id)
+                if not member:
+                    await game.send_message('Invalid investigation. Player is not in the game.', color=EmbedColor.WARN)
+                    return
+        
+        if member == game.president or member in game.previously_investigated:
+            await game.send_message('You may not investigate yourself or a previously investigated player!', color=EmbedColor.ERROR)
+            return
+
+        player_node = game.player_nodes.find(member.id, attr='id')
+        suspect = player_node.data
+        game.previously_investigated.append(suspect)
+        identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
+        image = f'{identity.lower()}_{randint(0,5)}.png'
+        await game.send_message(f'{suspect.name} is a {identity}.', channel=game.president.dm_channel, footer=game.president.name, image=image)
+        await game.reset_rounds()
+
 def setup(bot):
     bot.add_cog(Cog(bot))

@@ -12,7 +12,7 @@ from game import Game
 from utils import *
 
 from itertools import cycle
-from random import shuffle, choice, sample
+from random import shuffle, choice, sample, randint
 
 
 class SecretHitler(Game):
@@ -46,11 +46,8 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.chancellor_rejections = 0
         self.chancellor = None
         self.president = None
-        self.prev_president = None
-        self.prev_chancellor = None
         self.nominee = None
         self.candidate_policies = None
-        self.special_president = None
         self.special_election = False
         self.do_exec_act = False
         self.hitler_dead = False
@@ -148,7 +145,14 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count > 8) or (self.board['fascist'] == 2 and self.player_count > 6):
-            await exec_action.investigate_player(self)
+            await self.send_message("The President must now investigate another player's loyalty!")
+            if self.president.test_player:
+                suspect = await exec_action.investigate_player(self)
+                self.previously_investigated.append(suspect)
+                identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
+                image = f'{identity.lower()}_{randint(0,5)}.png'
+                await self.send_message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
+                
 
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count < 7:
@@ -161,8 +165,14 @@ The liberals must find and stop the Secret Hitler before it is too late.
             await self.reset_rounds()
 
         # TODO: Executive Action - Special Election
-        elif self.board['fascist'] == 3 and self.player_count > 7:
-            await exec_action.special_election(self)
+        elif self.board['fascist'] == 3 and self.player_count >= 7:
+            await self.send_message('The President must appoint another player to be President!')
+            if self.president.test_player:
+                new_president = await exec_action.special_election(self)
+                self.president = new_president
+                self.special_election = True
+                await self.send_message(f'{new_president.name} was chosen to be President.')
+                await self.reset_rounds()
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
@@ -186,8 +196,10 @@ The liberals must find and stop the Secret Hitler before it is too late.
         """Handles the turn-by-turn logic of the game."""
         await asyncio.sleep(1)
         if self.stage == 'nomination':
-            self.president = self.special_president if self.special_election else self.next_player
-            self.special_election = False
+            if not self.special_election:
+                self.president = self.next_player
+            else:
+                self.special_election = False
             await self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
 
             # Bot elects a chancellor
@@ -231,8 +243,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             # Bot chooses two policies
             if self.president.test_player:
                 self.policies = bot_action.send_policies(self.policies)
-                await self.send_message(f'The President has sent two policies to the Chancellor,\
-                    {self.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
+                await self.send_message(f'The President has sent two policies to the Chancellor, {self.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
                 policy_names = [policy.card_type.title() for policy in self.policies]
                 message = ', '.join(policy_names)
                 image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
@@ -322,7 +333,8 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         for player in self.players:
             player.last_chancellor = False
-            player.last_president = False
+            if not self.special_election:
+                player.last_president = False
             player.voted = False
             player.veto = False
 
@@ -333,7 +345,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         
         if self.chancellor:
             self.chancellor.last_chancellor = True
-        if self.president:
+        if self.president and not self.special_election:
             self.president.last_president = True
 
         self.rounds += 1
