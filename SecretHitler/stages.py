@@ -1,3 +1,4 @@
+import asyncio
 import discord
 from discord import Embed
 
@@ -43,7 +44,21 @@ async def tick(self, voting_results=None):
         if self.president.bot:
             self.nominee = bot_action.choose_chancellor(self.valid_chancellors)
             await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
-            vote_msg = await self.send_message(f'0/{max(self.player_count - self.bot_count, 0)} players voted.')
+            vote_msg = await self.send_message(title=f'0/{max(self.player_count - self.bot_count, 0)} players voted.', color=EmbedColor.INFO)
+            
+            async def vote_handler(msg, player):
+                vote, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
+                vote = vote.emoji.name
+                player.voted = True
+                self.votes[vote].append(player)
+                not_voted_msg = f'Waiting for: {", ".join(self.not_voted)}' if 0 < len(self.not_voted) <= 3 else ''
+                await vote_msg.edit(embed=Embed(
+                    title=f'{self.vote_count}/{self.player_count - self.bot_count} players voted.',
+                    description=not_voted_msg,
+                    color=EmbedColor.INFO))
+                await vote_callback(self)
+
+            vote_coros = []
             for player in self.players:
                 if not player.bot:
                     image = image_merge('vote_ja.png', 'vote_nein.png', asset_folder=self.asset_folder, pad=True)
@@ -51,19 +66,13 @@ async def tick(self, voting_results=None):
                         image=image, channel=player.dm_channel)
                     await msg.add_reaction(self.emojis['ja'])
                     await msg.add_reaction(self.emojis['nein'])
-                    vote, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
-                    vote = vote.emoji.name
-                    player.voted = True
-                    self.votes[vote].append(player)
-                    not_voted_msg = f'Waiting for: {", ".join(self.not_voted)}' if 0 < len(self.not_voted) <= 3 else ''
-                    await vote_msg.edit(embed=Embed(
-                        description=f'{self.vote_count}/{self.player_count - self.bot_count} players voted. {not_voted_msg}',
-                        color=EmbedColor.INFO))
-                    await vote_callback(self)
-            # Bot-only game, random voting results
-            if all(player.bot for player in self.players):
-                self.next_stage()
-                await self.tick(voting_results=bot_action.vote()=='ja')
+                    handler = vote_handler(msg, player)
+                    vote_coros.append(handler)
+            await asyncio.gather(*vote_coros)
+        # Bot-only game, random voting results
+        if all(player.bot for player in self.players):
+            self.next_stage()
+            await self.tick(voting_results=bot_action.vote()=='ja')
 
     # Stage: Election
     elif self.stage == 'election':
@@ -88,29 +97,37 @@ async def tick(self, voting_results=None):
         self.policies = [self.policy_deck.pop() for _ in range(3)]
         policy_names = [policy.card_type.title() for policy in self.policies]
         message = ', '.join(policy_names)
-        # Separate the policies with spaces (e.g. `$policy fascist fascist`)
         image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
         msg = await self.send_message(f'Choose two policies to send to the Chancellor, {self.chancellor.name}.',
-            title=f'Policies: {message}', channel=self.president.dm_channel, footer=self.president.name,
+            title=f'Policies: {message}', channel=self.president.dm_channel, footer=self.president.name if self.president.bot else '',
             image=image)
-        for i in range(1, 3 + 1):
-            await msg.add_reaction(self.emojis[i])
-
+        if not self.president.bot:
+            select_emojis = [self.emojis[i] for i in range(1, 4)]
+            for emoji in select_emojis:
+                await msg.add_reaction(emoji)
+            chancellor_policies = []
+            while len(chancellor_policies) < 2:
+                reaction, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, self.president.id))
+                policy_index = select_emojis.index(reaction.emoji)
+                if policy_index not in chancellor_policies:
+                    chancellor_policies.append(policy_index)
+            self.policies = [self.policies[i] for i in sorted(chancellor_policies)]
         # Bot chooses two policies
-        if self.president.bot:
+        else:
             self.policies = bot_action.send_policies(self.policies)
             await self.send_message(f'The President has sent two policies to the Chancellor, {self.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
-            policy_names = [policy.card_type.title() for policy in self.policies]
-            message = ', '.join(policy_names)
-            image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
-            if self.board['fascist'] >= 5:
-                await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor\
-                    may choose to invoke his veto power and discard both policies')
-                message += ' - Veto Allowed'
-            await self.send_message('Choose a policy to enact.', title=f'Policies: {message}',
-                channel=self.chancellor.dm_channel, footer=self.chancellor.name, image=image)
-            self.next_stage()
-            await self.tick()
+
+        if self.board['fascist'] >= 5:
+            await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor may choose to invoke his veto power and discard both policies')
+            message += ' - Veto Allowed'
+        
+        policy_names = [policy.card_type.title() for policy in self.policies]
+        message = ', '.join(policy_names)
+        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
+        await self.send_message('Choose a policy to enact.', title=f'Policies: {message}',
+            channel=self.chancellor.dm_channel, footer=self.chancellor.name if self.chancellor.bot else '', image=image)
+        self.next_stage()
+        await self.tick()
 
     # Stage: Chancellor
     elif self.stage == 'chancellor':

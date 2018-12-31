@@ -10,6 +10,7 @@ from random import shuffle, choice, sample, randint
 
 from . import bot_action
 from . import verify
+from .stages import *
 from game import Game
 from utils import *
 
@@ -35,7 +36,9 @@ class Cog:
                 member.dm_channel = None
                 member.bot = True
             await self.game.add_player(member)
-            await asyncio.sleep(1)
+        if bot == 'bot':
+            bots = ', '.join(name for name in self.game.bots)
+            await self.game.send_message(f'{repeat} bot{"s" if repeat > 1 else ""} ({bots}) joined the game.')
 
     @commands.command()
     async def leave(self, ctx, bot_name: str=None):
@@ -45,7 +48,7 @@ class Cog:
             await self.game.send_message('Game terminated due to player leaving the game.')
         player_id = ctx.author.id
         if bot_name in self.game.bots:
-            player_id = self.game.bots[bot_name]
+            player_id = self.game.bots.pop(bot_name)
         await self.game.remove_player(player_id)
 
     # Game Commands
@@ -72,6 +75,9 @@ class Cog:
                 return
             else:
                 player = game.find_player(ctx.message.mentions[0].id)
+                if player is None:
+                    await game.send_message('That player is not in the current game.', color=EmbedColor.WARN)
+                    return
         # Logic
         if player.had_position or player.id == ctx.author.id:
             await game.send_message('This player is ineligible to be nominated as Chancellor. Please choose another chancellor.', color=EmbedColor.ERROR)
@@ -79,51 +85,32 @@ class Cog:
         else:
             game.nominee = player
             await game.send_message(f'{game.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
-            game.next_stage()
+            vote_msg = await game.send_message(title=f'0/{max(game.player_count - game.bot_count, 0)} players voted.', color=EmbedColor.INFO)
+            
+            async def vote_handler(msg, player):
+                vote, _ = await game.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
+                vote = vote.emoji.name
+                player.voted = True
+                game.votes[vote].append(player)
+                not_voted_msg = f'Waiting for: {", ".join(game.not_voted)}' if 0 < len(game.not_voted) <= 3 else ''
+                await vote_msg.edit(embed=Embed(
+                    title=f'{game.vote_count}/{game.player_count - game.bot_count} players voted.',
+                    description=not_voted_msg,
+                    color=EmbedColor.INFO))
+                await vote_callback(game)
 
-    # **Replaced with react voting system.**
-    # @commands.command()
-    # @verify.game_started()
-    # @verify.stage('election')
-    # async def vote(self, ctx, vote: lower):
-    #     """Reads votes from DMs to determine election status."""
-    #     channel = ctx.message.channel
-    #     game = self.game
-    #     player = game.find_player(ctx.author.id)
-    #     # Rewrite using reaction voting (optionally?)
-    #     if type(channel) == discord.channel.DMChannel:
-    #         if vote not in ['ja', 'nein']:
-    #             await ctx.send(embed=Embed(description='Your vote must either be "ja" or "nein".', color=EmbedColor.ERROR))
-    #             return
-    #         if player.voted:
-    #             await ctx.send(embed=Embed(description='You have already voted for this round.', color=EmbedColor.WARN))
-    #             return
-    #         player.voted = True
-    #         game.votes[vote].append(player)
-    #         not_voted_msg = f'The following players have not voted yet: {", ".join(game.not_voted)}' if len(game.not_voted) <= 3 else ''
-    #         await game.send_message(f'{game.vote_count}/{game.player_count - game.bot_count} players voted. {not_voted_msg}')
-    #     else:
-    #         await ctx.message.delete()
-    #         await self.game.send_message('Hey there! You might want to keep your vote private, so send it here instead.',
-    #             color=EmbedColor.INFO, channel=ctx.author.dm_channel)
-    #         return
-    #     if len(game.not_voted) == 0:
-    #         if game.bot_count > 0:
-    #             # Bots send in votes
-    #             for bot in game.bots:
-    #                 vote = bot_action.vote()
-    #                 bot.voted = True
-    #                 game.votes[vote].append(bot)
-    #         vote_ja = "\n".join([player.name for player in game.votes['ja']])
-    #         vote_nein = "\n".join([player.name for player in game.votes['nein']])
-    #         if vote_ja == '':
-    #             vote_ja = 'None!'
-    #         if vote_nein == '':
-    #             vote_nein = 'None!'
-    #         fields = [{'name': 'Ja', 'value': vote_ja, 'inline': True}, {'name': 'Nein', 'value': vote_nein, 'inline': True}]
-    #         await game.send_message('', title=f'Election of {self.game.nominee.name} as Chancellor - Voting Results', fields=fields, color=EmbedColor.INFO)
-    #         results = len(game.votes['ja']) > len(game.votes['nein'])
-    #         await game.tick(voting_results=results)
+            vote_coros = []
+            for player in game.players:
+                if not player.bot:
+                    image = image_merge('vote_ja.png', 'vote_nein.png', asset_folder=game.asset_folder, pad=True)
+                    msg = await game.send_message(description=f'Vote for election of {game.nominee.name} as Chancellor',
+                        image=image, channel=player.dm_channel)
+                    await msg.add_reaction(game.emojis['ja'])
+                    await msg.add_reaction(game.emojis['nein'])
+                    handler = vote_handler(msg, player)
+                    vote_coros.append(handler)
+            await asyncio.gather(*vote_coros)
+            game.next_stage()
 
     @commands.command(aliases=['policy', 'send'])
     @verify.game_started()
@@ -226,7 +213,7 @@ class Cog:
 
     @commands.command()
     @verify.game_started()
-    @verify.stage('executive_action')
+    @verify.stage('execution')
     async def execute(self, ctx, player: str=''):
         game = self.game
         if ctx.author.id != game.president.id:
@@ -265,7 +252,7 @@ class Cog:
 
     @commands.command()
     @verify.game_started()
-    @verify.stage('executive_action')
+    @verify.stage('special_election')
     async def appoint(self, ctx, player: str=''):
         game = self.game
         if ctx.author.id != game.president.id:
@@ -301,7 +288,7 @@ class Cog:
 
     @commands.command()
     @verify.game_started()
-    @verify.stage('executive_action')
+    @verify.stage('investigate_loyalty')
     async def investigate(self, ctx, player: str=''):
         game = self.game
         if ctx.author.id != game.president.id:
@@ -331,9 +318,8 @@ class Cog:
         suspect = player_node.data
         game.previously_investigated.append(suspect)
         identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
-        image = f'{identity.lower()}_{randint(0,5)}.png'
-        await game.send_message(f'{suspect.name} is a {identity}.',
-            channel=game.president.dm_channel, footer=game.president.name if game.president.bot else '', image=image)
+        image = f'party_{identity.lower()}.png'
+        await game.send_message(f'{suspect.name} is a {identity}.', channel=game.president.dm_channel, footer=game.president.name, image=image)
         await game.reset_rounds()
 
 def setup(bot):

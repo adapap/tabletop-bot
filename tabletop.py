@@ -4,6 +4,7 @@ from discord import Embed
 from discord.ext import commands
 
 # Python Lib
+import asyncio
 import ast
 import json
 import os
@@ -24,7 +25,7 @@ class Cardbot(commands.Bot):
         self.game = None
 
         rootdir = os.getcwd()
-        ignore_dirs = ['.git', '__pycache__', 'tabletop-env']
+        ignore_dirs = ['.git', '__pycache__', 'base_assets']
 
         # Import all game folders, import them, and store their classes
         for d in os.listdir(rootdir):
@@ -67,9 +68,13 @@ discord.Member.has_role = has_role
 @bot.command(aliases=['test'])
 async def debug(ctx, *params: lower):
     """General purpose test command."""
-    from unittest import mock
-    mock_user = mock.Mock(spec=discord.User)
-    await ctx.send(mock_user)
+    img = 'loading.gif'
+    asset_path = 'SecretHitler/assets/'
+    image_path = 'SecretHitler/assets/' + img
+    file = discord.File(image_path, filename=img)
+    embed = discord.Embed(description='Loading!')
+    embed.set_author(name='Loading?', icon_url=f'attachment://{img}')
+    await ctx.send(embed=embed, file=file)
 
 @commands.guild_only()
 @bot.command(aliases=['purge', 'del', 'delete'])

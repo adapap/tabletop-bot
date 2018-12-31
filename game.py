@@ -15,16 +15,16 @@ class Game:
         self.asset_folder = ''
 
         self.emojis = {
-            1: ':one:',
-            2: ':two:',
-            3: ':three:',
-            4: ':four:',
-            5: ':five:',
-            6: ':six:',
-            7: ':seven:',
-            8: ':eight:',
-            9: ':nine:',
-            0: ':zero:'
+            1: '1\u20e3',
+            2: '2\u20e3',
+            3: '3\u20e3',
+            4: '4\u20e3',
+            5: '5\u20e3',
+            6: '6\u20e3',
+            7: '7\u20e3',
+            8: '8\u20e3',
+            9: '9\u20e3',
+            0: '0\u20e3'
         }
 
     @property
@@ -47,7 +47,7 @@ class Game:
         """Returns the time elapsed since the start of the game."""
         return 1
 
-    async def send_message(self, description: str='', *, 
+    async def send_message(self, description: str='', *, embed=None, file=None,
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
         """
         An embed constructor which sends a message to the channel.
@@ -57,6 +57,8 @@ class Game:
             raise ValueError('No discord channel provided.')
         elif not channel:
             channel = self.channel
+        if embed and file:
+            return await channel.send(embed=embed, file=file)
         embed = Embed(description=description, title=title, color=color)
         if channel != self.channel:
             msg = f'#{self.channel.name} in {self.channel.guild.name}'

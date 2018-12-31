@@ -101,8 +101,9 @@ The liberals must find and stop the Secret Hitler before it is too late.
             self.player_nodes.add(player)
             if player.bot:
                 self.bots[player.name] = player.id
-            await self.send_message(f'{player.name} joined the game.')
-        else:
+            else:
+                await self.send_message(f'{player.name} joined the game.')
+        elif not player.bot:
             await self.send_message(f'{player.name} is already in the game.', color=EmbedColor.WARN)
 
     async def remove_player(self, player_id):
@@ -138,23 +139,24 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
     async def executive_action(self): 
         """Manages the executive actions that the President must do after a fascist policy is passed."""
-        self.stage = 'executive_action'
 
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count >= 9) or (self.board['fascist'] == 2 and self.player_count >= 7):
+            self.stage = 'investigate_loyalty'
             await self.send_message("The President must now investigate another player's loyalty!")
             if self.president.bot:
-                suspect = await exec_action.investigate_player(self)
+                suspect = await exec_action.investigate_loyalty(self)
                 self.previously_investigated.append(suspect)
                 identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
                 image = f'party_{identity.lower()}.png'
                 await self.send_message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
+                await self.reset_rounds()
                 
-
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count <= 6:
+            self.stage = 'policy_peek'
             await exec_action.policy_peek(self)
-            policy_names = [policy.card_type.title() for policy in self.policy_deck[:3]]
+            policy_names = [policy.card_type.title() for policy in self.policy_deck[-3:]]
             message = ', '.join(policy_names)
             image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
             await self.send_message('', title=f'Top 3 Policies: {message}',
@@ -163,6 +165,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         # Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count >= 7:
+            self.stage = 'special_election'
             await self.send_message('The President must appoint another player to be President!')
             if self.president.bot:
                 new_president = await exec_action.special_election(self)
@@ -173,6 +176,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
+            self.stage = 'execution'
             await self.send_message('The President must now execute a player!')
             if self.president.bot:
                 victim = await exec_action.execution(self)

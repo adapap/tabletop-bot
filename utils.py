@@ -74,8 +74,11 @@ class LinkedList:
             if n == self.head:
                 raise KeyError(f'Linked list does not contain {node}')
         if not prev:
-            self.head = n.next
-            self.tail.next = self.head
+            if len(self) > 1:
+                self.head = n.next
+                self.tail.next = self.head
+            else:
+                self.head = self.tail = None
         else:
             prev.next = n.next
         self.length -= 1
