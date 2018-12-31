@@ -44,8 +44,7 @@ class Cardbot(commands.Bot):
         """Returns the class object for the game."""
         if name not in self.game_list:
             raise KeyError(f'Cardbot does not support the game: {name}')
-        self.game = self.games[name]()
-        self.game.bot = self
+        self.game = self.games[name](bot)
         return self.game
 
     def to_snake_case(self, s: str):
@@ -163,14 +162,15 @@ async def load_game(ctx, *game_name: str):
         return
     game = bot.load_game(name)
     game.channel = ctx.message.channel
-    assert hasattr(game, 'start_game')
+    assert hasattr(game, 'on_load')
     try:
         bot.load_extension(f'{name}.commands')
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
     msg = f'{game_name} loaded!'
-    await game.send_message(game.load_message, title=msg, color=EmbedColor.SUCCESS, image=game.load_image)
+    # await game.send_message(game.load_message, title=msg, color=EmbedColor.SUCCESS, image=game.load_image)
+    await on_load()
     print(msg)
 
 @bot.command(aliases=['unload'])
@@ -191,11 +191,10 @@ async def unload_game(ctx):
     await ctx.send(embed=Embed(title=msg, color=EmbedColor.INFO))
     print(msg)
 
-@bot.command(aliases=['start'])
-async def start_game(ctx):
+async def on_load():
     """Starts the current game through the game's start_game method."""
     await bot.change_presence(activity=discord.Game(name=bot.game.name))
-    await bot.game.start_game()
+    await bot.game.on_load()
 
 @bot.event
 async def on_ready():

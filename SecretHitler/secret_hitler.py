@@ -18,8 +18,8 @@ from random import shuffle, choice, sample, randint
 class SecretHitler(Game):
     """Secret Hitler is a card game."""
     name = 'Secret Hitler'
-    def __init__(self):
-        super().__init__()
+    def __init__(self, bot):
+        super().__init__(bot)
 
         self.load_message = """\
 Secret Hitler is a dramatic game of political intrigue and betrayal set in 1930's Germany. \
@@ -28,7 +28,8 @@ Known only to each other, the fascists coordinate to sow distrust and install th
 The liberals must find and stop the Secret Hitler before it is too late.
 """
         self.asset_folder = 'SecretHitler/assets/'
-        self.load_image = image_merge('_secret.png', '_hitler.png', asset_folder=self.asset_folder)
+        # self.load_image = image_merge('_secret.png', '_hitler.png', asset_folder=self.asset_folder)
+        self.load_image = 'title.png'
         
         self.player_nodes = LinkedList()
         # Keeps track of enacted policies
@@ -48,6 +49,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.president = None
         self.nominee = None
         self.candidate_policies = None
+        self.enact_msg = None
         self.special_election = False
         self.do_exec_act = False
         self.hitler_dead = False
@@ -264,11 +266,35 @@ The liberals must find and stop the Secret Hitler before it is too late.
                     message = f'You are Hitler.\n{fascists[0].name} is a Fascist.'
                 await self.send_message(message, channel=player.dm_channel, footer=player.name if player.bot else '', image=player.image)
 
+    async def on_load(self):
+        """Creates the interface to join/leave the game."""
+        await self.send_message(title=self.name, description=self.load_message, image=self.load_image, color=EmbedColor.SUCCESS)
+        gui_embed = discord.Embed(title='Players', description='...', color=EmbedColor.SUCCESS)
+        gui_embed.set_footer(text='Join using the buttons below!')
+
+        gui = await self.channel.send(embed=gui_embed)
+        await gui.add_reaction(self.emojis['add_user'])
+        await gui.add_reaction(self.emojis['remove_user'])
+        await gui.add_reaction(self.emojis['bot'])
+        await gui.add_reaction(self.emojis['add'])
+        await gui.add_reaction(self.emojis['remove'])
+        await gui.add_reaction(self.emojis['01'])
+
+        bot_add = 1
+        check_user = lambda r, u: r.message.id == gui.id and u.has_role('Tabletop Master')
+        while True:
+            reaction, user = await self.bot.wait_for('reaction_add', check=check_user)
+            await self.channel.send(f'You ({user}) reacted with: {reaction} {reaction.emoji}')
+            break
+
     async def start_game(self):
         """Checks if the game can start and assigns roles to players."""
         # Custom Emojis
         self.emojis['ja'] = discord.utils.get(self.channel.guild.emojis, name='ja')
         self.emojis['nein'] = discord.utils.get(self.channel.guild.emojis, name='nein')
+        self.emojis['veto'] = '📝'
+        self.emojis['yes'] = '✅'
+        self.emojis['no'] = '❌'
 
         if not 5 <= self.player_count <= 10:
             await self.send_message('You must have between 5-10 players to start the game.', color=EmbedColor.ERROR)

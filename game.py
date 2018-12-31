@@ -6,26 +6,19 @@ from utils import EmbedColor
 
 class Game:
     """Game object for each game running through Discord."""
-    def __init__(self):
+    def __init__(self, bot):
         self.channel = None
-        self.bot = None
+        self.bot = bot
         self.bots = {}
         self.started = False
         self.game_info = True
         self.asset_folder = ''
 
-        self.emojis = {
-            1: '1\u20e3',
-            2: '2\u20e3',
-            3: '3\u20e3',
-            4: '4\u20e3',
-            5: '5\u20e3',
-            6: '6\u20e3',
-            7: '7\u20e3',
-            8: '8\u20e3',
-            9: '9\u20e3',
-            0: '0\u20e3'
-        }
+        self.emojis = {}
+        # Emoji Vault A
+        VAULT_A = 529174297382748170
+        for emoji in bot.get_guild(VAULT_A).emojis:
+            self.emojis[emoji.name] = emoji
 
     @property
     def player_count(self):
