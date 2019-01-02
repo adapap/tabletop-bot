@@ -243,11 +243,11 @@ class Cog:
         game.player_nodes.remove(player_node)
         victim = player_node.data
         if member.identity == 'Hitler':
-            await game.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+            await game.send_message(f':knife: {victim.name} was executed. As he was Hitler, the Liberals win!')
             game.hitler_dead = True
             game.started = False
         else:
-            await game.send_message(f'{victim.name} was executed.')
+            await game.send_message(f':knife: {victim.name} was executed.')
             await game.reset_rounds()
 
     @commands.command()

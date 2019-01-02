@@ -84,7 +84,8 @@ async def tick(self, voting_results=None):
                 message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler, and with 3 or more fascist policies in place, the Fascists win!'
                 await self.send_message(message, color=EmbedColor.ERROR)
                 self.started = False
-                return
+                # PLEASE UNCOMMENT THIS
+                #return
             self.next_stage()
             await self.tick()
         else:
@@ -140,6 +141,12 @@ async def tick(self, voting_results=None):
             # Chancellor veto
             if self.board['fascist'] >= 5:
                 self.chancellor.veto = bot_action.veto()
+            if not self.chancellor.veto:
+                self.board[enacted.card_type] += 1
+                if enacted.card_type == 'fascist':
+                    self.do_exec_act = True
+                await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+
         # Human reacts for enact / veto
         else:
             select_emojis = [self.emojis[str(i).zfill(2)] for i in range(1, 3)]
@@ -156,10 +163,11 @@ async def tick(self, voting_results=None):
                 self.board[enacted.card_type] += 1
                 if enacted.card_type == 'fascist':
                     self.do_exec_act = True
+                await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
             else:
                 # Otherwise, veto emoji is chosen
                 self.chancellor.veto = True
-        
+
         # President veto
         if self.chancellor.veto:
             veto_msg = await self.send_message('The Chancellor chooses to veto. The President must concur for the veto to go through.',
@@ -178,14 +186,22 @@ async def tick(self, voting_results=None):
                 await self.send_message('The President concurrs, and the veto is successful!', color=EmbedColor.SUCCESS)
             else:
                 await self.game.send_message('The President does not concur, and the veto fails!', color=EmbedColor.WARN)
-
-        # Enact policy
-        else:
-            self.board[enacted.card_type] += 1
-            if enacted.card_type == 'fascist':
-                self.do_exec_act = True
-            await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+                select_emojis = [self.emojis[str(i).zfill(2)] for i in range(1, 3)]
+                msg = self.enact_msg
+                for emoji in select_emojis:
+                    await msg.add_reaction(emoji)
+                reaction, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, self.chancellor.id))
+                index = select_emojis.index(reaction.emoji)
+                # Enact a policy if number is chosen
+                enacted = self.policies[index]
+                self.board[enacted.card_type] += 1
+                if enacted.card_type == 'fascist':
+                    self.do_exec_act = True
+                await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
+        
+        print(f'Before next_stage {self.stage}')
         self.next_stage()
+        print(f'After next_stage {self.stage}')
         await self.tick()
 
     # Stage: Summary
@@ -218,6 +234,7 @@ async def tick(self, voting_results=None):
             # await self.send_message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
         
         if self.do_exec_act:
+            print(f'End of summary, before exec action {self.stage}')
             self.do_exec_act = False
             await self.executive_action()
         else:

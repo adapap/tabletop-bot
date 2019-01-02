@@ -178,8 +178,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
+            print(f'Before execution stage set {self.stage}')
             self.stage = 'execution'
+            print(f'Before execution message {self.stage}')
             await self.send_message('The President must now execute a player!')
+            print(f'After execution message {self.stage}')
             if self.president.bot:
                 victim = await exec_action.execution(self)
                 if victim.identity == 'Hitler':
@@ -197,6 +200,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
     async def tick(self, voting_results: bool=None):
         """Handles the turn-by-turn logic of the game."""
+        print(f'Ticking at {self.stage}')
         await asyncio.sleep(1)
         await stages.tick(self, voting_results)
 

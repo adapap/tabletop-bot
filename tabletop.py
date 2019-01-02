@@ -173,6 +173,10 @@ async def load_game(ctx, *game_name: str):
     await on_load()
     print(msg)
 
+@bot.command(aliases=['start'])
+async def start_game(ctx):
+	await bot.game.start_game()
+
 @bot.command(aliases=['unload'])
 async def unload_game(ctx):
     """Removes all commands and unloads the current game."""
