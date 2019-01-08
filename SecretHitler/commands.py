@@ -13,6 +13,7 @@ from . import verify
 from .stages import *
 from game import Game
 from utils import *
+import utils
 
 uid_gen = count(-1, -1)
 nametag_gen = iter(sample(range(100, 1000), 900))
@@ -102,7 +103,7 @@ class Cog:
             vote_coros = []
             for player in game.players:
                 if not player.bot:
-                    image = image_merge('vote_ja.png', 'vote_nein.png', asset_folder=game.asset_folder, pad=True)
+                    image = image_merge(*map(utils.image_from_file, [game.asset_folder + f for f in ['vote_ja.png', 'vote_nein.png']]), pad=True)
                     msg = await game.send_message(description=f'Vote for election of {game.nominee.name} as Chancellor',
                         image=image, channel=player.dm_channel)
                     await msg.add_reaction(game.emojis['ja'])
@@ -110,7 +111,6 @@ class Cog:
                     handler = vote_handler(msg, player)
                     vote_coros.append(handler)
             await asyncio.gather(*vote_coros)
-            game.next_stage()
 
     @commands.command(aliases=['policy', 'send'])
     @verify.game_started()
@@ -147,7 +147,7 @@ class Cog:
         await game.send_message(f'The President has sent two policies to the Chancellor, {game.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
         policy_names = [policy.card_type.title() for policy in game.policies]
         message = ', '.join(policy_names)
-        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=game.asset_folder, pad=True)
+        image = image_merge(*map(utils.image_from_file, [f'{game.asset_folder}{p.lower()}_policy.png' for p in policy_names]), pad=True)
         if game.board['fascist'] >= 5:
             await game.send_message('As there are at least 5 fascist policies enacted, the Chancellor may choose to invoke his veto power and discard both policies.')
             message += ' - Veto Allowed'

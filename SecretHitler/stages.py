@@ -4,6 +4,7 @@ from discord import Embed
 
 from . import bot_action
 from utils import *
+import utils
 
 def react_select(msg_id, user_id):
     def predicate(reaction, user):
@@ -38,13 +39,17 @@ async def tick(self, voting_results=None):
             self.president = self.next_player
         else:
             self.special_election = False
-        await self.send_message(f'{self.president.name} is the President now! They must nominate a Chancellor.')
+        fields = [{
+        'name': 'Valid Nominees',
+        'value': '\n'.join(str(x) for x in self.valid_chancellors)
+        }]
+        await self.send_message(f'{self.president.name} is the President now!\nThey must nominate a Chancellor.', fields=fields)
 
         # Bot elects a chancellor
         if self.president.bot:
             self.nominee = bot_action.choose_chancellor(self.valid_chancellors)
             await self.send_message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
-            vote_msg = await self.send_message(title=f'0/{max(self.player_count - self.bot_count, 0)} players voted.', color=EmbedColor.INFO)
+            vote_msg = await self.send_message(title=f'0/{len(self.not_voted)} players voted.', color=EmbedColor.INFO)
             
             async def vote_handler(msg, player):
                 vote, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
@@ -53,7 +58,7 @@ async def tick(self, voting_results=None):
                 self.votes[vote].append(player)
                 not_voted_msg = f'Waiting for: {", ".join(self.not_voted)}' if 0 < len(self.not_voted) <= 3 else ''
                 await vote_msg.edit(embed=Embed(
-                    title=f'{self.vote_count}/{self.player_count - self.bot_count} players voted.',
+                    title=f'{self.vote_count}/{self.vote_count + len(self.not_voted)} players voted.',
                     description=not_voted_msg,
                     color=EmbedColor.INFO))
                 await vote_callback(self)
@@ -61,7 +66,7 @@ async def tick(self, voting_results=None):
             vote_coros = []
             for player in self.players:
                 if not player.bot:
-                    image = image_merge('vote_ja.png', 'vote_nein.png', asset_folder=self.asset_folder, pad=True)
+                    image = image_merge(*map(utils.image_from_file, [self.asset_folder + f for f in ['vote_ja.png', 'vote_nein.png']]), pad=True)
                     msg = await self.send_message(description=f'Vote for election of {self.nominee.name} as Chancellor',
                         image=image, channel=player.dm_channel)
                     await msg.add_reaction(self.emojis['ja'])
@@ -99,7 +104,7 @@ async def tick(self, voting_results=None):
         self.policies = [self.policy_deck.pop() for _ in range(3)]
         policy_names = [policy.card_type.title() for policy in self.policies]
         message = ', '.join(policy_names)
-        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
+        image = image_merge(*map(utils.image_from_file, [f'{self.asset_folder}{p.lower()}_policy.png' for p in policy_names]), pad=True)
         msg = await self.send_message(f'Choose two policies to send to the Chancellor, {self.chancellor.name}.',
             title=f'Policies: {message}', channel=self.president.dm_channel, footer=self.president.name if self.president.bot else '',
             image=image)
@@ -120,8 +125,8 @@ async def tick(self, voting_results=None):
 
         policy_names = [policy.card_type.title() for policy in self.policies]
         message = ', '.join(policy_names)
-        image = image_merge(*[f'{p.lower()}_policy.png' for p in policy_names], asset_folder=self.asset_folder, pad=True)
-
+        image = image_merge(*map(utils.image_from_file, [f'{self.asset_folder}{p.lower()}_policy.png' for p in policy_names]), pad=True)
+        
         await self.send_message(f'The President has sent two policies to the Chancellor, {self.chancellor.name}, who must now choose one to enact.', color=EmbedColor.SUCCESS)
         if self.board['fascist'] >= 5:
             await self.send_message('As there are at least 5 fascist policies enacted, the Chancellor may choose to invoke his veto power and discard both policies.')
@@ -199,9 +204,7 @@ async def tick(self, voting_results=None):
                     self.do_exec_act = True
                 await self.send_message(f'A {enacted.card_type} policy was passed!', color=EmbedColor.SUCCESS)
         
-        print(f'Before next_stage {self.stage}')
         self.next_stage()
-        print(f'After next_stage {self.stage}')
         await self.tick()
 
     # Stage: Summary
@@ -225,8 +228,8 @@ async def tick(self, voting_results=None):
             return
 
         # Redundant message, show image of board progress
-        message = f'{self.board["liberal"]} liberal policies and {self.board["fascist"]} fascist policies have been passed.'
-        await self.send_message(message, color=EmbedColor.INFO)
+        image = self.render_board()
+        await self.send_message('', color=EmbedColor.INFO, image=image)
 
         if self.policy_count < 3:
             self.generate_deck()
@@ -234,7 +237,6 @@ async def tick(self, voting_results=None):
             # await self.send_message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
         
         if self.do_exec_act:
-            print(f'End of summary, before exec action {self.stage}')
             self.do_exec_act = False
             await self.executive_action()
         else:

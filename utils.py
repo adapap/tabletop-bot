@@ -1,3 +1,4 @@
+import io
 from PIL import Image
 
 __all__ = ['EmbedColor', 'Node', 'LinkedList', 'upper', 'lower', 'image_merge']
@@ -135,25 +136,38 @@ def lower(s):
     """Returns the lower-case form of a string."""
     return s.lower()
 
-def image_merge(*files, asset_folder='', axis=0, new_filename='_auto.png', pad=False):
-    """Combines a set of images along an axis and returns a new image path.
+def image_merge(*images, axis=0, pad=False):
+    """Combines a set of images along an axis and returns the bytes of the image.
     0: horizontal
     1: vertical
     """
-    images = tuple(map(lambda f: Image.open(f'{asset_folder}/{f}').convert('RGBA'), files))
-    widths, heights = zip(*(i.size for i in images))
+    images = tuple(map(lambda i: Image.open(io.BytesIO(i)).convert('RGBA'), images))
+    dims = list(zip(*(i.size for i in images)))
     if pad:
-        widths = [15 + w for w in widths]
-    total_width = sum(widths)
-    max_height = max(heights)
+        dims[axis] = [15 + x for x in dims[axis]]
+    total_axis = sum(dims[axis])
+    max_cross = max(dims[axis - 1])
 
-    new_im = Image.new('RGBA', (total_width, max_height))
+    if axis == 0:
+        new_im = Image.new('RGBA', (total_axis, max_cross))
+    else:
+        new_im = Image.new('RGBA', (max_cross, total_axis))
 
-    x_offset = 0
+    offset = 0
     for i, img in enumerate(images):
-        new_im.paste(img, (x_offset, 0))
-        x_offset += widths[i]
+        if axis == 0:
+            new_im.paste(img, (offset, 0))
+        else:
+            new_im.paste(img, (0, offset))
+        offset += dims[axis][i]
 
-    new_path = f'{asset_folder}/{new_filename}'
-    new_im.save(new_path)
-    return new_filename
+    imgbytes = io.BytesIO()
+    new_im.save(imgbytes, format='PNG')
+    return imgbytes.getvalue()
+
+def image_from_file(filename):
+    """Converts an image path to image bytes."""
+    imgbytes = io.BytesIO()
+    im = Image.open(filename).convert('RGBA')
+    im.save(imgbytes, format='PNG')
+    return imgbytes.getvalue()

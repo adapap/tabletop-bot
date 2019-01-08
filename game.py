@@ -1,8 +1,11 @@
 import discord
 from discord import Embed
-
-
 from utils import EmbedColor
+
+import io
+from itertools import count
+from PIL import Image
+from random import sample
 
 class Game:
     """Game object for each game running through Discord."""
@@ -13,6 +16,9 @@ class Game:
         self.started = False
         self.game_info = True
         self.asset_folder = ''
+
+        self.uid_gen = count(-1, -1)
+        self.nametag_gen = iter(sample(range(100, 1000), 900))
 
         self.emojis = {}
         # Emoji Vault A
@@ -64,8 +70,12 @@ class Game:
             for field in fields:
                 embed.add_field(**field)
         if image:
-            image_path = self.asset_folder + image
-            file = discord.File(image_path, filename='image.png')
+            if type(image) == str:
+                imgbytes = io.BytesIO()
+                im = Image.open(f'{self.asset_folder}{image}')
+                im.save(imgbytes, format='PNG')
+                image = imgbytes.getvalue()
+            file = discord.File(image, filename='image.png')
             embed.set_image(url='attachment://image.png')
             return await channel.send(embed=embed, file=file)
         else:
