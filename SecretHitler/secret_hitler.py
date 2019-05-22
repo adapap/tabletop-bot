@@ -118,17 +118,36 @@ The liberals must find and stop the Secret Hitler before it is too late.
         liberal_policy.thumbnail(size, Image.ANTIALIAS)
         fascist_policy.thumbnail(size, Image.ANTIALIAS)
 
+        election_tracker = Image.open(f'{self.asset_folder}election_tracker.png').convert('RGBA')
+        w, h = election_tracker.size
+        ratio = 26 / h
+        size = (int(w * ratio), int(h * ratio))
+
+        election_tracker.thumbnail(size, Image.ANTIALIAS)
+
+        # Liberal Policy
         left = 95
         top = 54
         offset = 95
         for i in range(self.board['liberal']):
             pos = (left + offset * i, top)
-            liberal_board.paste(liberal_policy, pos)
+            liberal_board.alpha_composite(liberal_policy, pos)
+        
+        # Fascist Policy
         left = 51
         offset = 93
         for i in range(self.board['fascist']):
             pos = (left + offset * i, top)
-            fascist_board.paste(fascist_policy, pos)
+            fascist_board.alpha_composite(fascist_policy, pos)
+
+        # Election Tracker
+        left = 212
+        top = 182
+        offset = 63.5
+        for i in range(self.chancellor_rejections):
+            pos = (round(left + offset * i), top)
+            liberal_board.alpha_composite(election_tracker, pos)
+
         liberal = io.BytesIO()
         liberal_board.save(liberal, format='PNG')
         liberal = liberal.getvalue()

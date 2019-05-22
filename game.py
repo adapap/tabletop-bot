@@ -3,6 +3,7 @@ from discord import Embed
 from utils import EmbedColor
 
 import io
+from datetime import datetime
 from itertools import count
 from PIL import Image
 from random import sample
@@ -16,6 +17,7 @@ class Game:
         self.started = False
         self.game_info = True
         self.asset_folder = ''
+        self.start_time = 0
 
         self.uid_gen = count(-1, -1)
         self.nametag_gen = iter(sample(range(100, 1000), 900))
@@ -43,10 +45,10 @@ class Game:
 
     @property
     def duration(self):
-        """Returns the time elapsed since the start of the game."""
-        return 1
+        """Returns the time elapsed (seconds) since the start of the game."""
+        return (datetime.now() - self.start_time).seconds
 
-    async def send_message(self, description: str='', *, embed=None, file=None,
+    async def message(self, description: str='', *, embed=None, file=None,
         title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
         """
         An embed constructor which sends a message to the channel.
@@ -71,15 +73,24 @@ class Game:
                 embed.add_field(**field)
         if image:
             if type(image) == str:
-                imgbytes = io.BytesIO()
-                im = Image.open(f'{self.asset_folder}{image}')
-                im.save(imgbytes, format='PNG')
-                image = imgbytes.getvalue()
+                image = image_from_bytes(f'{self.asset_folder}{image}')
             file = discord.File(image, filename='image.png')
             embed.set_image(url='attachment://image.png')
             return await channel.send(embed=embed, file=file)
         else:
             return await channel.send(embed=embed)
+
+    async def warn(self, **kwargs):
+        """Sends a warning message."""
+        await self.message(**kwargs.update({'color': EmbedColor.WARN}))
+
+    async def error(self, **kwargs):
+        """Sends an error message."""
+        await self.message(**kwargs.update({'color': EmbedColor.ERROR}))
+
+    async def success(self, **kwargs):
+        """Sends a success message."""
+        await self.message(**kwargs.update({'color': EmbedColor.SUCCESS}))
 
     async def start_game(self):
         """Subclasses, or games, must implement this method."""
