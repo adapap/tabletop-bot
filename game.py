@@ -1,5 +1,6 @@
 import discord
 from discord import Embed
+from image import ImageUtil
 from utils import EmbedColor
 
 import io
@@ -73,24 +74,27 @@ class Game:
                 embed.add_field(**field)
         if image:
             if type(image) == str:
-                image = image_from_bytes(f'{self.asset_folder}{image}')
+                image = ImageUtil.from_file(f'{self.asset_folder}{image}')
             file = discord.File(image, filename='image.png')
             embed.set_image(url='attachment://image.png')
             return await channel.send(embed=embed, file=file)
         else:
             return await channel.send(embed=embed)
 
-    async def warn(self, **kwargs):
+    async def warn(self, description: str='', **kwargs):
         """Sends a warning message."""
-        await self.message(**kwargs.update({'color': EmbedColor.WARN}))
+        kwargs.update({'color': EmbedColor.WARN})
+        await self.message(description, **kwargs)
 
-    async def error(self, **kwargs):
+    async def error(self, description: str='', **kwargs):
         """Sends an error message."""
-        await self.message(**kwargs.update({'color': EmbedColor.ERROR}))
+        kwargs.update({'color': EmbedColor.ERROR})
+        await self.message(description, **kwargs)
 
-    async def success(self, **kwargs):
+    async def success(self, description: str='', **kwargs):
         """Sends a success message."""
-        await self.message(**kwargs.update({'color': EmbedColor.SUCCESS}))
+        kwargs.update({'color': EmbedColor.SUCCESS})
+        await self.message(description, **kwargs)
 
     async def start_game(self):
         """Subclasses, or games, must implement this method."""

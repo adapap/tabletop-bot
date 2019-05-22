@@ -169,7 +169,7 @@ async def load_game(ctx, *game_name: str):
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
     msg = f'{game_name} loaded!'
-    # await game.send_message(game.load_message, title=msg, color=EmbedColor.SUCCESS, image=game.load_image)
+    # await game.success(game.load_message, title=msg, image=game.load_image)
     await on_load()
     print(msg)
 

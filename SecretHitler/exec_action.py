@@ -9,7 +9,7 @@ async def investigate_loyalty(self):
 
 async def policy_peek(self):
     """The President sees the next three policy cards."""
-    await self.send_message('The President will now peek at the top three policies in the deck!')
+    await self.message('The President will now peek at the top three policies in the deck!')
 
 async def special_election(self):
     """The President elects a new President."""

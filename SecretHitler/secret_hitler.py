@@ -16,6 +16,7 @@ import os, sys
 # Parent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from game import Game
+from image import ImageUtil
 from utils import *
 import utils
 
@@ -155,7 +156,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         fascist_board.save(fascist, format='PNG')
         fascist = fascist.getvalue()
 
-        board = image_merge(liberal, fascist, axis=1)
+        board = ImageUtil.merge(liberal, fascist, axis=1)
         return board
 
     async def add_player(self, member: discord.Member):
@@ -170,19 +171,19 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 self.bots[player.name] = player.id
             else:
                 pass # Joining using buttons renders this irrelevant
-                # await self.send_message(f'{player.name} joined the game.')
+                # await self.message(f'{player.name} joined the game.')
         elif not player.bot:
-            await self.send_message(f'{player.name} is already in the game.', color=EmbedColor.WARN)
+            await self.warn(f'{player.name} is already in the game.')
 
     async def remove_player(self, player_id):
         """Removes a player from the game cycle."""
         node = self.player_nodes.find(player_id, attr='id')
         if not node:
-            await self.send_message(f'That player is not in the current game.', color=EmbedColor.ERROR)
+            await self.error(f'That player is not in the current game.')
         else:
             self.player_nodes.remove(node)
             pass # Leaving using buttons renders this irrelevant
-            # await self.send_message(f'{node.data.name} left the game.')
+            # await self.message(f'{node.data.name} left the game.')
 
     def next_stage(self, skip=1):
         """Skips `skip` stages in the stage cycle."""
@@ -213,13 +214,13 @@ The liberals must find and stop the Secret Hitler before it is too late.
         # Executive Action - Investigate Loyalty
         if (self.board['fascist'] == 1 and self.player_count >= 9) or (self.board['fascist'] == 2 and self.player_count >= 7):
             self.stage = 'investigate_loyalty'
-            await self.send_message("The President must now investigate another player's loyalty!")
+            await self.message("The President must now investigate another player's loyalty!")
             if self.president.bot:
                 suspect = await exec_action.investigate_loyalty(self)
                 self.previously_investigated.append(suspect)
                 identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
                 image = f'party_{identity.lower()}.png'
-                await self.send_message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
+                await self.message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
                 await self.reset_rounds()
                 
         # Executive Action - Policy Peek
@@ -228,35 +229,35 @@ The liberals must find and stop the Secret Hitler before it is too late.
             await exec_action.policy_peek(self)
             policy_names = [policy.card_type.title() for policy in self.policy_deck[-3:]]
             message = ', '.join(policy_names)
-            image = image_merge(*map(utils.image_from_file, [f'{self.asset_folder}{p.lower()}_policy.png' for p in policy_names]), pad=True)
-            await self.send_message('', title=f'Top 3 Policies: {message}',
+            image = ImageUtil.merge(*map(ImageUtil.from_file, [f'{self.asset_folder}{p.lower()}_policy.png' for p in policy_names]), pad=True)
+            await self.message('', title=f'Top 3 Policies: {message}',
                 channel=self.president.dm_channel, footer=self.president.name if self.president.bot else '', image=image)
             await self.reset_rounds()
 
         # Executive Action - Special Election
         elif self.board['fascist'] == 3 and self.player_count >= 7:
             self.stage = 'special_election'
-            await self.send_message('The President must appoint another player to be President!')
+            await self.message('The President must appoint another player to be President!')
             if self.president.bot:
                 new_president = await exec_action.special_election(self)
                 self.president = new_president
                 self.special_election = True
-                await self.send_message(f'{new_president.name} was chosen to be President.')
+                await self.message(f'{new_president.name} was chosen to be President.')
                 await self.reset_rounds()
 
         # Executive Action - Execution
         elif self.board['fascist'] == 4 or self.board['fascist'] == 5:
             self.stage = 'execution'
-            await self.send_message('The President must now execute a player!')
+            await self.message('The President must now execute a player!')
             if self.president.bot:
                 victim = await exec_action.execution(self)
                 if victim.identity == 'Hitler':
-                    await self.send_message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
+                    await self.message(f'{victim.name} was executed. As he was Hitler, the Liberals win!')
                     self.hitler_dead = True
                     self.started = False
                     return
                 else:
-                    await self.send_message(f':knife: {victim.name} was executed.')
+                    await self.message(f':knife: {victim.name} was executed.')
                     await self.reset_rounds()
 
         # Executive action does not apply
@@ -332,12 +333,12 @@ The liberals must find and stop the Secret Hitler before it is too late.
                         message = 'You are the only Fascist.'
                 elif player.identity == 'Hitler' and len(fascists) == 1:
                     message = f'You are Hitler.\n{fascists[0].name} is a Fascist.'
-                await self.send_message(message, channel=player.dm_channel, footer=player.name if player.bot else '', image=player.image)
+                await self.message(message, channel=player.dm_channel, footer=player.name if player.bot else '', image=player.image)
 
     async def on_load(self):
         """Creates the interface to join/leave the game."""
-        await self.send_message(title=self.name, description=self.load_message, image=self.load_image, color=EmbedColor.SUCCESS)
-        gui_embed = discord.Embed(title='Players', description='...', color=EmbedColor.SUCCESS)
+        await self.success(title=self.name, description=self.load_message, image=self.load_image)
+        gui_embed = discord.Embed(title='Players', description='...')
         gui_embed.set_footer(text='Join using the buttons below!')
 
         gui = await self.channel.send(embed=gui_embed)
@@ -354,7 +355,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             command = reaction.emoji.name
             if command == 'play':
                 if not 5 <= self.player_count <= 10:
-                    await self.send_message('You must have between 5-10 players to start the game.', color=EmbedColor.ERROR)
+                    await self.error('You must have between 5-10 players to start the game.')
                 else:
                     await self.start_game()
                     break
@@ -368,7 +369,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 await gui.edit(embed=gui_embed)
             elif command == 'bot' and user.has_role('Tabletop Master'):
                 bot_check = lambda m: m.author.id == user.id
-                prompt = await self.send_message('How many bots?')
+                prompt = await self.message('How many bots?')
                 msg = await self.bot.wait_for('message', check=bot_check)
                 await asyncio.sleep(1)
                 await prompt.delete()
@@ -376,7 +377,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 try:
                     num_bots = int(msg.content)
                     if num_bots < 1:
-                        continue
+                        for _ in range(abs(num_bots)):
+                            if len(self.bots) == 0:
+                                continue
+                            bot_id = self.bots.pop(list(self.bots)[-1])
+                            await self.remove_player(bot_id)
                     for _ in range(num_bots):
                         member = discord.Object(id=str(next(self.uid_gen)))
                         member.display_name = f'Bot{next(self.nametag_gen)}'
@@ -385,11 +390,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
                         await self.add_player(member)
                     bots = ', '.join(name for name in self.bots)
                     # Unnecessary message?
-                    # await self.send_message(f'{num_bots} bot{"s" if num_bots > 1 else ""} ({bots}) joined the game.')
+                    # await self.message(f'{num_bots} bot{"s" if num_bots > 1 else ""} ({bots}) joined the game.')
                     gui_embed.description = '\n'.join(player.name for player in self.players)
                     await gui.edit(embed=gui_embed)
                 except ValueError:
-                    await self.send_message('Invalid number.', color=EmbedColor.ERROR)
+                    await self.error('Invalid number.')
 
     async def start_game(self):
         """Checks if the game can start and assigns roles to players."""

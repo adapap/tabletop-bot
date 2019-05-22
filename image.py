@@ -1,5 +1,6 @@
 import io
-class Image:
+from PIL import Image
+class ImageUtil:
     """Handles operations on images including merging and conversions."""
     @staticmethod
     def from_file(filename):
