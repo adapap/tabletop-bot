@@ -261,8 +261,8 @@ async def tick(self, voting_results=None):
 
         # Redundant message, show image of board progress
         image = self.render_board()
-        await self.message(f"Policies in Deck - Fascist ({self.policy_type_count('fascist')}) | Liberal ({self.policy_type_count('liberal')})",
-            color=EmbedColor.INFO, image=image, footer='Order: ' + '->'.join([x.name for x in self.players]) + '->')
+        await self.message(title=f"Policies in Deck - Fascist ({self.policy_type_count('fascist')}) | Liberal ({self.policy_type_count('liberal')})",
+            color=EmbedColor.INFO, image=image, footer='Order: ' + ' → '.join([x.name for x in self.players]) + ' → ...')
 
         if self.policy_count < 3:
             self.generate_deck()

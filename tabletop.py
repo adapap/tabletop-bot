@@ -224,7 +224,15 @@ async def on_command_error(ctx, error):
         return
 
     error = getattr(error, 'original', error)
+    error_type = error.__class__
+
     if isinstance(error, commands.CommandNotFound):
+        return
+
+    if isinstance(error, discord.errors.Forbidden):
+        await ctx.send(embed=Embed(title='Missing Permissions',
+            description='Ensure the bot has necessary permissions including:\n`Manage Messages`.',
+            color=EmbedColor.ERROR))
         return
 
     if isinstance(error, commands.BotMissingPermissions):
@@ -248,7 +256,8 @@ async def on_command_error(ctx, error):
         return
 
     error_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
-    await ctx.send(embed=Embed(title=f'{type(error).__name__}', description=f'```python\n{error_str[-2000:]}```', color=EmbedColor.ERROR))
+    lines = '\n'.join(error_str.split('\n')[-10:])
+    await ctx.send(embed=Embed(title=f'{type(error).__name__}', description=f'```python\n{lines}```', color=EmbedColor.ERROR))
     print(error_str)
 
 if __name__ == '__main__':

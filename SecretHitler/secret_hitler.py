@@ -97,7 +97,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
     def policy_type_count(self, type_):
         """Counts how many policies of a type are remaining in the deck."""
-        return len(filter(lambda x: x.card_type == type_), self.policy_deck)
+        return len(list(filter(lambda x: x.card_type == type_, self.policy_deck)))
 
     def find_player(self, _id):
         """Finds a player by ID."""
@@ -150,9 +150,8 @@ The liberals must find and stop the Secret Hitler before it is too late.
         left = 212
         top = 182
         offset = 63.5
-        for i in range(self.chancellor_rejections):
-            pos = (round(left + offset * i), top)
-            liberal_board.alpha_composite(election_tracker, pos)
+        pos = (round(left + offset * (self.chancellor_rejections)), top)
+        liberal_board.alpha_composite(election_tracker, pos)
 
         liberal = io.BytesIO()
         liberal_board.save(liberal, format='PNG')
@@ -333,9 +332,10 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 if player.identity == 'Fascist':
                     team = [f.name for f in fascists if f.name != player.name]
                     if len(team):
-                        message = 'You are a Fascist along with:\n' + '\n'.join(team) + f'\n{hitler.name} is Hitler.'
+                        message = 'You are a Fascist along with:\n' + '\n'.join(team)
                     else:
                         message = 'You are the only Fascist.'
+                    message += f'\n{hitler.name} is Hitler.'
                 elif player.identity == 'Hitler' and len(fascists) == 1:
                     message = f'You are Hitler.\n{fascists[0].name} is a Fascist.'
                 await self.message(message, channel=player.dm_channel, footer=player.name if player.bot else '', image=player.image)
