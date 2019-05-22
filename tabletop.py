@@ -25,7 +25,7 @@ class Cardbot(commands.Bot):
         self.game = None
 
         rootdir = os.getcwd()
-        ignore_dirs = ['.git', '__pycache__', 'base_assets']
+        ignore_dirs = ['.git', 'srv', '__pycache__', 'base_assets']
 
         # Import all game folders, import them, and store their classes
         for d in os.listdir(rootdir):
