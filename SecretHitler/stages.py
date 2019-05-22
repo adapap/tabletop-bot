@@ -11,26 +11,26 @@ def react_select(msg_id, user_id):
         return reaction.message.id == msg_id and user.id == user_id
     return predicate
 
-async def vote_callback(game):
-    if len(game.not_voted) == 0:
-        if game.bot_count > 0:
+async def vote_callback(self):
+    if len(self.not_voted) == 0:
+        if self.bot_count > 0:
             # Bots send in votes
-            for bot_id in game.bots.values():
-                bot = game.find_player(bot_id)
+            for bot_id in self.bots.values():
+                bot = self.find_player(bot_id)
                 vote = bot_action.vote()
                 bot.voted = True
-                game.votes[vote].append(bot)
-        vote_ja = "\n".join([player.name for player in game.votes['ja']])
-        vote_nein = "\n".join([player.name for player in game.votes['nein']])
+                self.votes[vote].append(bot)
+        vote_ja = "\n".join([player.name for player in self.votes['ja']])
+        vote_nein = "\n".join([player.name for player in self.votes['nein']])
         if vote_ja == '':
             vote_ja = 'None!'
         if vote_nein == '':
             vote_nein = 'None!'
         fields = [{'name': 'Ja', 'value': vote_ja, 'inline': True}, {'name': 'Nein', 'value': vote_nein, 'inline': True}]
-        await game.message('', title=f'Election of {game.nominee.name} as Chancellor - Voting Results', fields=fields, color=EmbedColor.INFO)
-        results = len(game.votes['ja']) > len(game.votes['nein'])
-        game.next_stage()
-        await game.tick(voting_results=results)
+        await self.message('', title=f'Election of {self.nominee.name} as Chancellor - Voting Results', fields=fields, color=EmbedColor.INFO)
+        results = len(self.votes['ja']) > len(self.votes['nein'])
+        self.next_stage()
+        await self.tick(voting_results=results)
 
 async def tick(self, voting_results=None):
     # Stage: Nomination
@@ -40,16 +40,16 @@ async def tick(self, voting_results=None):
         else:
             self.special_election = False
         fields = [{
-        'name': 'Valid Nominees',
-        'value': '\n'.join(str(x) for x in self.valid_chancellors)
+            'name': 'Valid Nominees',
+            'value': '\n'.join(f'{i + 1}: {x}' for i, x in enumerate(self.valid_chancellors))
         }]
-        await self.message(f'{self.president.name} is the President now!\nThey must nominate a Chancellor.', fields=fields)
+        self.nominate_msg = await self.message(f'{self.president.name} is the President now!\nThey must nominate a Chancellor.', fields=fields)
 
         # Bot elects a chancellor
         if self.president.bot:
             self.nominee = bot_action.choose_chancellor(self.valid_chancellors)
             await self.message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
-            vote_msg = await self.message(title=f'0/{len(self.not_voted)} players voted.', color=EmbedColor.INFO)
+            vote_msg = await self.message(title=f'0/{len(self.not_voted)} players voted.')
             
             async def vote_handler(msg, player):
                 vote, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
@@ -59,6 +59,40 @@ async def tick(self, voting_results=None):
                 not_voted_msg = f'Waiting for: {", ".join(self.not_voted)}' if 0 < len(self.not_voted) <= 3 else ''
                 await vote_msg.edit(embed=Embed(
                     title=f'{self.vote_count}/{self.vote_count + len(self.not_voted)} players voted.',
+                    description=not_voted_msg,
+                    color=EmbedColor.INFO))
+                await vote_callback(self)
+
+            vote_coros = []
+            for player in self.players:
+                if not player.bot:
+                    image = ImageUtil.merge(*map(ImageUtil.from_file, [self.asset_folder + f for f in ['vote_ja.png', 'vote_nein.png']]), pad=True)
+                    msg = await self.message(description=f'Vote for election of {self.nominee.name} as Chancellor',
+                        image=image, channel=player.dm_channel)
+                    await msg.add_reaction(self.emojis['ja'])
+                    await msg.add_reaction(self.emojis['nein'])
+                    handler = vote_handler(msg, player)
+                    vote_coros.append(handler)
+            await asyncio.gather(*vote_coros)
+        else:
+            select_emojis = [self.emojis[str(i).zfill(2)] for i in range(1, len(self.valid_chancellors) + 1)]
+            msg = self.nominate_msg
+            for emoji in select_emojis:
+                await msg.add_reaction(emoji)
+            reaction, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, self.president.id))
+            index = select_emojis.index(reaction.emoji)
+            self.nominee = self.valid_chancellors[index]
+            await self.message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
+            vote_msg = await self.message(title=f'0/{len(self.not_voted)} players voted.')
+                
+            async def vote_handler(msg, player):
+                vote, _ = await self.bot.wait_for('reaction_add', check=react_select(msg.id, player.id))
+                vote = vote.emoji.name
+                player.voted = True
+                self.votes[vote].append(player)
+                not_voted_msg = f'Waiting for: {", ".join(self.not_voted)}' if 0 < len(self.not_voted) <= 3 else ''
+                await vote_msg.edit(embed=Embed(
+                    title=f'{self.vote_count}/{self.player_count - self.bot_count} players voted.',
                     description=not_voted_msg,
                     color=EmbedColor.INFO))
                 await vote_callback(self)
@@ -89,8 +123,7 @@ async def tick(self, voting_results=None):
                 message = f'Your new Chancellor {self.chancellor.name} was secretly Hitler, and with 3 or more fascist policies in place, the Fascists win!'
                 await self.error(message)
                 self.started = False
-                # PLEASE UNCOMMENT THIS
-                #return
+                return
             self.next_stage()
             await self.tick()
         else:
@@ -189,7 +222,7 @@ async def tick(self, voting_results=None):
             if self.president.veto:
                 await self.success('The President concurrs, and the veto is successful!')
             else:
-                await self.game.warn('The President does not concur, and the veto fails!')
+                await self.self.warn('The President does not concur, and the veto fails!')
                 select_emojis = [self.emojis[str(i).zfill(2)] for i in range(1, 3)]
                 msg = self.enact_msg
                 for emoji in select_emojis:
@@ -228,7 +261,8 @@ async def tick(self, voting_results=None):
 
         # Redundant message, show image of board progress
         image = self.render_board()
-        await self.message('', color=EmbedColor.INFO, image=image)
+        await self.message(f"Policies in Deck - Fascist ({self.policy_type_count('fascist')}) | Liberal ({self.policy_type_count('liberal')})",
+            color=EmbedColor.INFO, image=image, footer='Order: ' + '->'.join([x.name for x in self.players]) + '->')
 
         if self.policy_count < 3:
             self.generate_deck()

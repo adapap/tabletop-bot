@@ -55,6 +55,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.president = None
         self.nominee = None
         self.candidate_policies = None
+        self.nominate_msg = None
         self.enact_msg = None
         self.special_election = False
         self.do_exec_act = False
@@ -93,6 +94,10 @@ The liberals must find and stop the Secret Hitler before it is too late.
         """Returns the next player in the game."""
         self.player = self.player.next
         return self.player.data
+
+    def policy_type_count(self, type_):
+        """Counts how many policies of a type are remaining in the deck."""
+        return len(filter(lambda x: x.card_type == type_), self.policy_deck)
 
     def find_player(self, _id):
         """Finds a player by ID."""
@@ -328,7 +333,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 if player.identity == 'Fascist':
                     team = [f.name for f in fascists if f.name != player.name]
                     if len(team):
-                        message = 'You are a Fascist along with:\n' + '\n'.join(team)
+                        message = 'You are a Fascist along with:\n' + '\n'.join(team) + f'\n{hitler.name} is Hitler.'
                     else:
                         message = 'You are the only Fascist.'
                 elif player.identity == 'Hitler' and len(fascists) == 1:
@@ -407,8 +412,10 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         await self.assign_identities()
 
-        # The first player is the first to join
+        # Pick a random starting player
         self.player = self.player_nodes.head
+        for _ in range(randint(0, len(self.players))):
+            self.player = self.player.next
         # Runs the current stage of the game
         self.started = True
         await self.tick()

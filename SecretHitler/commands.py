@@ -246,6 +246,7 @@ class Cog:
             await game.message(f':knife: {victim.name} was executed. As he was Hitler, the Liberals win!')
             game.hitler_dead = True
             game.started = False
+            return
         else:
             await game.message(f':knife: {victim.name} was executed.')
             await game.reset_rounds()

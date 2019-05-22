@@ -150,6 +150,7 @@ async def load_game(ctx, *game_name: str):
     # If a game is already running, unload it first.
     if bot.game:
         await ctx.invoke(unload_game)
+    await ctx.message.delete()
     game_name = ' '.join(game_name)
     default = ''
     # DEFAULT GAME
@@ -215,6 +216,7 @@ async def on_ready():
     print('Prefix:', '$')
     print(separator)
     await bot.change_presence(activity=discord.Game(name='tabletop games!'))
+    # Add dynamic loading menu for games
 
 @bot.event
 async def on_command_error(ctx, error):
