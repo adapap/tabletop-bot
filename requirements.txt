@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 git+https://github.com/Rapptz/discord.py
->>>>>>> aec1abe97317f801e672d9c3bdb0a56e67a5509c
 aiohttp==3.3.2
 async-timeout==3.0.0
 attrs==18.1.0
