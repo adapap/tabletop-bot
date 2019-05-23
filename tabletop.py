@@ -25,13 +25,14 @@ class Cardbot(commands.Bot):
         self.game = None
 
         rootdir = os.getcwd()
+        print(rootdir, os.listdir(rootdir))
         ignore_dirs = ['.git', '__pycache__', 'base_assets']
 
         # Import all game folders, import them, and store their classes
         for d in os.listdir(rootdir):
             if os.path.isdir(os.path.join(rootdir, d)) and d not in ignore_dirs:
                 game_name = self.to_snake_case(d)
-                import_module(f'{d}.{game_name}', package='tabletop')
+                #import_module(f'{d}.{game_name}', package='tabletop')
                 game_class = getattr(sys.modules[f'{d}.{game_name}'], d)
                 self.games[d] = game_class
 
