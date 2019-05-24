@@ -1,9 +1,3 @@
-# Local
-from . import bot_action, exec_action, stages
-from .cards import *
-from .player import Player
-
-# External
 import asyncio
 import discord
 from itertools import count, cycle, islice
@@ -11,14 +5,18 @@ import io
 from PIL import Image
 from random import shuffle, choice, sample, randint
 import re
-import os, sys
+import os
+import sys
 
-# Parent
+from . import bot_action, exec_action, stages
+from .cards import *
+from .player import Player
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from game import Game
-from image import ImageUtil
-from utils import *
-import utils
+from Game import Game
+from Image import ImageUtil
+from Player import PlayerCycle
+from Utils import *
 
 
 class SecretHitler(Game):
@@ -36,7 +34,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.asset_folder = 'SecretHitler/assets/'
         self.load_image = 'title.png'
         
-        self.player_nodes = LinkedList()
+        self.player_cycle = PlayerCycle(Player)
         # Keeps track of enacted policies
         self.board = {
             'fascist': 0,
@@ -72,7 +70,12 @@ The liberals must find and stop the Secret Hitler before it is too late.
     @property
     def players(self):
         """Returns a list of players in the game."""
-        return self.player_nodes.elements
+        return self.player_cycle.players()
+
+    @property
+    def bots(self):
+        """Returns a list of bots in the game."""
+        return self.player_cycle.players(filter_=lambda p: p.bot)
 
     @property
     def vote_count(self):
@@ -93,16 +96,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
     def next_player(self):
         """Returns the next player in the game."""
         self.player = self.player.next
-        return self.player.data
+        return self.player
 
     def policy_type_count(self, type_):
         """Counts how many policies of a type are remaining in the deck."""
         return len(list(filter(lambda x: x.card_type == type_, self.policy_deck)))
-
-    def find_player(self, _id):
-        """Finds a player by ID."""
-        node = self.player_nodes.find(_id, attr='id')
-        return node.data if node else None
 
     def render_board(self):
         """Returns the image data for the current board progress."""
@@ -162,32 +160,6 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
         board = ImageUtil.merge(liberal, fascist, axis=1)
         return board
-
-    async def add_player(self, member: discord.Member):
-        """Adds a player to the current game."""
-        if not member.bot:
-            # DM Channels must be created for non-bot players.
-            await member.create_dm()
-        player = Player(member=member)
-        if not self.find_player(member.id):
-            self.player_nodes.add(player)
-            if player.bot:
-                self.bots[player.name] = player.id
-            else:
-                pass # Joining using buttons renders this irrelevant
-                # await self.message(f'{player.name} joined the game.')
-        elif not player.bot:
-            await self.warn(f'{player.name} is already in the game.')
-
-    async def remove_player(self, player_id):
-        """Removes a player from the game cycle."""
-        node = self.player_nodes.find(player_id, attr='id')
-        if not node:
-            await self.error(f'That player is not in the current game.')
-        else:
-            self.player_nodes.remove(node)
-            pass # Leaving using buttons renders this irrelevant
-            # await self.message(f'{node.data.name} left the game.')
 
     def next_stage(self, skip=1):
         """Skips `skip` stages in the stage cycle."""
@@ -352,7 +324,6 @@ The liberals must find and stop the Secret Hitler before it is too late.
         await gui.add_reaction(self.emojis['bot'])
         await gui.add_reaction(self.emojis['play'])
 
-        bot_add = 1
         react_check = lambda r, u: r.message.id == gui.id and not u.bot
         while True:
             reaction, user = await self.bot.wait_for('reaction_add', check=react_check)
@@ -365,11 +336,15 @@ The liberals must find and stop the Secret Hitler before it is too late.
                     await self.start_game()
                     break
             elif command == 'add_user':
-                await self.add_player(user)
+                result = await self.player_cycle.add_player(member=user)
+                if not result:
+                    await self.warn(f'{user.name} is already in the game.')
                 gui_embed.description = '\n'.join(player.name for player in self.players)
                 await gui.edit(embed=gui_embed)
             elif command == 'remove_user':
-                await self.remove_player(user.id)
+                result = await self.player_cycle.remove_player(id=user.id)
+                if not result:
+                    await self.warn(f'You are not currently in the game.')
                 gui_embed.description = '\n'.join(player.name for player in self.players) if self.player_count else '...'
                 await gui.edit(embed=gui_embed)
             elif command == 'bot' and user.has_role('Tabletop Master'):
@@ -386,16 +361,13 @@ The liberals must find and stop the Secret Hitler before it is too late.
                             if len(self.bots) == 0:
                                 continue
                             bot_id = self.bots.pop(list(self.bots)[-1])
-                            await self.remove_player(bot_id)
+                            await self.remove_player(id=bot_id)
                     for _ in range(num_bots):
-                        member = discord.Object(id=str(next(self.uid_gen)))
-                        member.display_name = f'Bot{next(self.nametag_gen)}'
-                        member.dm_channel = None
-                        member.bot = True
-                        await self.add_player(member)
+                        result = await self.player_cycle.add_bot()
+                        if not result:
+                            await self.warn('Unable to add bot to the game.')
+                            break
                     bots = ', '.join(name for name in self.bots)
-                    # Unnecessary message?
-                    # await self.message(f'{num_bots} bot{"s" if num_bots > 1 else ""} ({bots}) joined the game.')
                     gui_embed.description = '\n'.join(player.name for player in self.players)
                     await gui.edit(embed=gui_embed)
                 except ValueError:

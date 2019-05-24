@@ -16,8 +16,8 @@ from datetime import datetime
 from importlib import import_module
 
 # Custom
-from game import Game
-from utils import *
+from Game import Game
+from Utils import *
 
 class Cardbot(commands.Bot):
     """Handles the setup and instancing of different games."""
@@ -167,7 +167,7 @@ async def load_game(ctx, *game_name: str):
     # Create text channel for game
     bot.channel = ctx.message.channel
     channel_hash = hashlib.md5(str(datetime.now()).encode('utf-8')).hexdigest()[:6]
-    channel_name = game.name + channel_hash
+    channel_name = game.name + ' ' + channel_hash
     game.channel = await bot.channel.category.create_text_channel(channel_name)
     assert hasattr(game, 'on_load')
     try:

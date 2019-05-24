@@ -1,11 +1,10 @@
 import discord
 
-class Player:
-    def __init__(self, *, member: discord.Member=None):
-        self.name = member.display_name
-        self.id = member.id
-        self.dm_channel = member.dm_channel
-        self.bot = member.bot
+from Player import BasicPlayer
+
+class Player(BasicPlayer):
+    def __init__(self, *, member: discord.Member):
+        super().__init__(member)
         self.identity = None
         self.voted = False
         self.veto = False
@@ -16,9 +15,3 @@ class Player:
     @property
     def had_position(self):
         return self.last_president or self.last_chancellor
-
-    def __repr__(self):
-        return f'<Player: {self.name}>'
-
-    def __str__(self):
-        return self.name

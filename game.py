@@ -1,7 +1,8 @@
 import discord
 from discord import Embed
-from image import ImageUtil
-from utils import EmbedColor
+
+from Image import ImageUtil
+from Utils import EmbedColor
 
 import io
 from datetime import datetime
@@ -14,14 +15,10 @@ class Game:
     def __init__(self, bot):
         self.channel = None
         self.bot = bot
-        self.bots = {}
         self.started = False
         self.game_info = True
         self.asset_folder = ''
         self.start_time = 0
-
-        self.uid_gen = count(-1, -1)
-        self.nametag_gen = iter(sample(range(100, 1000), 900))
 
         self.emojis = {}
         # Emoji Vault A

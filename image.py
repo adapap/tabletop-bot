@@ -1,4 +1,5 @@
 import io
+from typing import List
 from PIL import Image
 class ImageUtil:
     """Handles operations on images including merging and conversions."""
@@ -12,7 +13,7 @@ class ImageUtil:
         return imgbytes
 
     @staticmethod
-    def merge(*images_, axis=0, pad=False):
+    def merge(*images_: List[bytes], axis=0, pad=False):
         """Combines a set of images along an axis and returns the bytes of the image.
         0: horizontal
         1: vertical

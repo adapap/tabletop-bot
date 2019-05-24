@@ -3,8 +3,9 @@ import discord
 from discord import Embed
 
 from . import bot_action
-from image import ImageUtil
-from utils import *
+
+from Image import ImageUtil
+from Utils import *
 
 def react_select(msg_id, user_id):
     def predicate(reaction, user):

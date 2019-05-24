@@ -1,8 +1,6 @@
-# Discord
 import discord
 from discord import Embed
 from discord.ext import commands
-
 import asyncio
 import functools
 from itertools import count
@@ -11,10 +9,10 @@ from random import shuffle, choice, sample, randint
 from . import bot_action
 from . import verify
 from .stages import *
-from game import Game
-from image import ImageUtil
-from utils import *
-import utils
+
+from Game import Game
+from Image import ImageUtil
+from Utils import *
 
 uid_gen = count(-1, -1)
 nametag_gen = iter(sample(range(100, 1000), 900))
