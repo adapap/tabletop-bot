@@ -8,15 +8,21 @@ class ImageUtil:
         imgbytes = io.BytesIO()
         im = Image.open(filename).convert('RGBA')
         im.save(imgbytes, format='PNG')
-        return imgbytes.getvalue()
+        imgbytes.seek(0)
+        return imgbytes
 
     @staticmethod
-    def merge(*images, axis=0, pad=False):
+    def merge(*images_, axis=0, pad=False):
         """Combines a set of images along an axis and returns the bytes of the image.
         0: horizontal
         1: vertical
         """
-        images = tuple(map(lambda i: Image.open(io.BytesIO(i)).convert('RGBA'), images))
+        images = ()
+        for image in images_:
+            if type(image) == bytes:
+                image = io.BytesIO(image)
+            image.seek(0)
+            images += (Image.open(image).convert('RGBA'),)
         dims = list(zip(*(i.size for i in images)))
         if pad:
             dims[axis] = [15 + x for x in dims[axis]]
@@ -38,4 +44,5 @@ class ImageUtil:
 
         imgbytes = io.BytesIO()
         new_im.save(imgbytes, format='PNG')
-        return imgbytes.getvalue()
+        imgbytes.seek(0)
+        return imgbytes

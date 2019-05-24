@@ -1,3 +1,3 @@
-app="tabletop.docker"
+app="tabletop:1.0"
 docker build -t ${app} .
-docker run -ti -p 56733:80 --name=${app} tabletop
+docker run -d --name Tabletop ${app}

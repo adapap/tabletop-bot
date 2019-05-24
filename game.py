@@ -98,7 +98,9 @@ class Game:
 
     async def start_game(self):
         """Subclasses, or games, must implement this method."""
-        raise NotImplementedError(f'{self.__class__.__name__} needs a `start_game` method.')
+        if self.__class__.__name__ != 'Game':
+            raise NotImplementedError(f'{self.__class__.__name__} needs a `start_game` method.')
+        self.start_time = datetime.now()
 
     def __repr__(self):
         return f'{self.name}'

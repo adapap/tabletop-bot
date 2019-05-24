@@ -6,11 +6,13 @@ from discord.ext import commands
 # Python Lib
 import asyncio
 import ast
+import hashlib
 import json
 import os
 import re
 import sys
 import traceback
+from datetime import datetime
 from importlib import import_module
 
 # Custom
@@ -25,14 +27,13 @@ class Cardbot(commands.Bot):
         self.game = None
 
         rootdir = os.getcwd()
-        print(rootdir, os.listdir(rootdir))
         ignore_dirs = ['.git', '__pycache__', 'base_assets']
 
         # Import all game folders, import them, and store their classes
         for d in os.listdir(rootdir):
             if os.path.isdir(os.path.join(rootdir, d)) and d not in ignore_dirs:
                 game_name = self.to_snake_case(d)
-                #import_module(f'{d}.{game_name}', package='tabletop')
+                import_module(f'{d}.{game_name}', package='tabletop')
                 game_class = getattr(sys.modules[f'{d}.{game_name}'], d)
                 self.games[d] = game_class
 
@@ -80,7 +81,7 @@ async def debug(ctx, *params: lower):
 @bot.command(aliases=['purge', 'del', 'delete'])
 async def clear(ctx, number=1):
     """Removes the specified number of messages."""
-    if ctx.author.has_role('Staff'):
+    if not ctx.author.has_role('Tabletop Master'):
         return
     number = int(number)
     await ctx.message.delete()
@@ -163,17 +164,20 @@ async def load_game(ctx, *game_name: str):
         await ctx.send(embed=Embed(title=f'The game {game_name} is not available.', color=EmbedColor.ERROR))
         return
     game = bot.load_game(name)
-    game.channel = ctx.message.channel
+    # Create text channel for game
+    bot.channel = ctx.message.channel
+    channel_hash = hashlib.md5(str(datetime.now()).encode('utf-8')).hexdigest()[:6]
+    channel_name = game.name + channel_hash
+    game.channel = await bot.channel.category.create_text_channel(channel_name)
     assert hasattr(game, 'on_load')
     try:
         bot.load_extension(f'{name}.commands')
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    msg = f'{game_name} loaded!'
-    # await game.success(game.load_message, title=msg, image=game.load_image)
-    await on_load()
+    msg = f'{game_name} loaded! Playing in {game.channel}'
     print(msg)
+    await on_load()
 
 @bot.command(aliases=['start'])
 async def start_game(ctx):
@@ -189,12 +193,13 @@ async def unload_game(ctx):
     name = re.sub(r'\s*', '', game_name)
     try:
         bot.unload_extension(f'{name}.commands')
+        await bot.game.channel.delete()
         bot.game = None
     except Exception as e:
         print(f'Unloading failed.', file=sys.stderr)
         traceback.print_exc()
     msg = f'{game_name} has been unloaded.'
-    await ctx.send(embed=Embed(title=msg, color=EmbedColor.INFO))
+    await bot.channel.send(embed=Embed(title=msg, color=EmbedColor.INFO))
     print(msg)
 
 async def on_load():
@@ -265,5 +270,6 @@ if __name__ == '__main__':
     with open('token.json') as file:
         data = json.loads(file.read())
         token = data['token']
-
+        if sys.argv[-1] == '--dev':
+            token = data['dev']
     bot.run(token)

@@ -403,15 +403,12 @@ The liberals must find and stop the Secret Hitler before it is too late.
 
     async def start_game(self):
         """Checks if the game can start and assigns roles to players."""
-        # Custom Emojis
-        self.emojis['ja'] = discord.utils.get(self.channel.guild.emojis, name='ja')
-        self.emojis['nein'] = discord.utils.get(self.channel.guild.emojis, name='nein')
+        await super().init_game()
         self.emojis['veto'] = '📝'
         self.emojis['yes'] = '✅'
         self.emojis['no'] = '❌'
 
         await self.assign_identities()
-
         # Pick a random starting player
         self.player = self.player_nodes.head
         for _ in range(randint(0, len(self.players))):
