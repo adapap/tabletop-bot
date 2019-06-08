@@ -1,24 +1,10 @@
-from copy import deepcopy
-from PIL import Image
+from Card import BasicCard
 
-class Card:
-    def __init__(self, *, img_src: str):
-        self.img_src = img_src
-
-
-class VotingCard(Card):
-    def __init__(self, *, img_src: str):
-        super().__init__(img_src=img_src)
-
-
-class PolicyCard(Card):
-    def __init__(self, *, img_src: str, card_type: str):
-        super().__init__(img_src=img_src)
+class PolicyCard(BasicCard):
+    def __init__(self, *, card_type: str, image: str):
         self.card_type = card_type
-    def __repr__(self):
-        return f'PolicyCard(card_type={self.card_type})'
+        self.image = image
 
-
-class IdentityCard(Card):
-    def __init__(self, *, img_src: str):
-        super().__init__(img_src=img_src)
+    @property
+    def name(self):
+        return self.card_type.title()

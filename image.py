@@ -1,10 +1,11 @@
 import io
+import os
 from typing import List
 from PIL import Image
 class ImageUtil:
     """Handles operations on images including merging and conversions."""
     @staticmethod
-    def from_file(filename):
+    def from_file(filename: str):
         """Converts an image file to image bytes."""
         imgbytes = io.BytesIO()
         im = Image.open(filename).convert('RGBA')
@@ -13,8 +14,16 @@ class ImageUtil:
         return imgbytes
 
     @staticmethod
-    def merge(*images_: List[bytes], axis=0, pad=False):
-        """Combines a set of images along an axis and returns the bytes of the image.
+    def scale(image: Image, w=None, h=None):
+        width, height = image.size
+        ratio = (w or width) / (h or height)
+        size = (int(width * ratio), int(height * ratio))
+        image.thumbnail(size, Image.ANTIALIAS)
+
+    @staticmethod
+    def merge(*images_: List[bytes], axis: int=0, pad: bool=False):
+        """
+        Combines a set of images along an axis and returns the bytes of the image.
         0: horizontal
         1: vertical
         """
@@ -47,3 +56,20 @@ class ImageUtil:
         new_im.save(imgbytes, format='PNG')
         imgbytes.seek(0)
         return imgbytes
+
+class AssetManager:
+    """Handles asset retrieval by checking for `assets/` folder in the game directory."""
+    def __init__(self, filepath):
+        root = os.path.dirname(os.path.realpath(filepath))
+        assets = os.path.join(root, 'assets')
+        basename = os.path.basename(os.path.normpath(root))
+        if not os.path.isdir(assets):
+            raise FileNotFoundError(basename + ' has no /assets folder.')
+        self.root = assets
+
+    def get_asset(self, filename: str):
+        """Retrieves an asset matching the given filename."""
+        path = os.path.join(self.root, filename)
+        if not os.path.exists(path):
+            raise FileNotFoundError('No file ' + filename + ' found in assets folder.')
+        return path

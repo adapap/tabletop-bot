@@ -61,11 +61,6 @@ class Cardbot(commands.Bot):
 bot = Cardbot(command_prefix='$', description='''A discord tabletop bot.''')
 bot.remove_command('help')
 
-def has_role(self, rolename):
-    """Returns a boolean whether a member has a role."""
-    return rolename in [role.name for role in self.roles]
-discord.Member.has_role = has_role
-
 @bot.command(aliases=['test'])
 async def debug(ctx, *params: lower):
     """General purpose test command."""
@@ -78,11 +73,10 @@ async def debug(ctx, *params: lower):
     await ctx.send(embed=embed, file=file)
 
 @commands.guild_only()
+@commands.has_role('Tabletop Master')
 @bot.command(aliases=['purge', 'del', 'delete'])
 async def clear(ctx, number=1):
     """Removes the specified number of messages."""
-    if not ctx.author.has_role('Tabletop Master'):
-        return
     number = int(number)
     await ctx.message.delete()
     if number > 99:
@@ -143,7 +137,7 @@ async def _eval(ctx, *, cmd):
 @bot.command(aliases=['game_list', 'gamelist'])
 async def games(ctx):
     """Returns a list of available games to play."""
-    game_list = '\n'.join([x().name for x in bot.games.values()])
+    game_list = '\n'.join([x.name for x in bot.games.values()])
     await ctx.send(embed=Embed(title='Games', description=game_list, color=EmbedColor.INFO))
 
 @bot.command(aliases=['load'])
@@ -154,11 +148,9 @@ async def load_game(ctx, *game_name: str):
         await ctx.invoke(unload_game)
     await ctx.message.delete()
     game_name = ' '.join(game_name)
-    default = ''
-    # DEFAULT GAME
+    DEFAULT = 'Secret Hitler'
     if game_name == '':
-        default = '(default) '
-        game_name = 'Secret Hitler'
+        game_name = DEFAULT
     name = re.sub(r'\s*', '', game_name)
     if name not in bot.games:
         await ctx.send(embed=Embed(title=f'The game {game_name} is not available.', color=EmbedColor.ERROR))
@@ -167,15 +159,21 @@ async def load_game(ctx, *game_name: str):
     # Create text channel for game
     bot.channel = ctx.message.channel
     channel_hash = hashlib.md5(str(datetime.now()).encode('utf-8')).hexdigest()[:6]
-    channel_name = game.name + ' ' + channel_hash
+    channel_prefix = game.name.replace(' ', '-').lower()
+    channel_name = channel_prefix + '-' + channel_hash
+    for channel in bot.channel.category.channels: # Cleanup channels -> Only inactive game channels
+        if channel.name.startswith(channel_prefix) and not channel.name == channel_prefix:
+            await channel.delete()
     game.channel = await bot.channel.category.create_text_channel(channel_name)
     assert hasattr(game, 'on_load')
     try:
         bot.load_extension(f'{name}.commands')
+    except commands.errors.ExtensionNotFound:
+        print(f'No commands found for {game_name}.', file=sys.stderr)
     except Exception as e:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
-    msg = f'{game_name} loaded! Playing in {game.channel}'
+    msg = f'{game_name} loaded! Playing in #{game.channel}'
     print(msg)
     await on_load()
 
@@ -232,7 +230,7 @@ async def on_command_error(ctx, error):
     error = getattr(error, 'original', error)
     error_type = error.__class__
 
-    if isinstance(error, commands.CommandNotFound):
+    if isinstance(error, commands.CommandNotFound) or isinstance(error, discord.errors.NotFound):
         return
 
     if isinstance(error, discord.errors.Forbidden):
@@ -260,6 +258,10 @@ async def on_command_error(ctx, error):
         _message = 'You need the **{}** permission(s) to use this command.'.format(fmt)
         await ctx.send(_message)
         return
+
+    # Remove active game channels
+    if bot.game:
+        await bot.game.channel.delete()
 
     error_str = ''.join(traceback.format_exception(type(error), error, error.__traceback__))
     lines = '\n'.join(error_str.split('\n')[-10:])

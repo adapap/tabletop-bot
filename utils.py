@@ -1,9 +1,9 @@
 class EmbedColor:
+    """Enum for colors to use in embeds."""
     ERROR = 14024704
     WARN = 16760064
     INFO = 31163
     SUCCESS = 2459904
-
 
 def upper(s):
     """Returns the upper-case form of a string."""
