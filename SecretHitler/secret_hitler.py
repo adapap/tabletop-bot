@@ -1,5 +1,7 @@
 import asyncio
 import io
+import os
+import sys
 import time
 from discord import Embed
 from PIL import Image
@@ -9,12 +11,12 @@ from . import bot_action
 from .cards import PolicyCard
 from .player import Player
 
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ..Card import Deck
-from ..Game import Game
-from ..Image import ImageUtil
-from ..Player import PlayerCycle
-from ..Utils import EmbedColor
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Card import Deck
+from Game import Game
+from Image import ImageUtil
+from Player import PlayerCycle
+from Utils import EmbedColor
 
 
 class SecretHitler(Game):
@@ -523,7 +525,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
     async def on_load(self):
         """Creates the interface to join/leave the game."""
         await super().on_load()
-        await self.player_join_gui(players=self.player_cycle)
+        await self.player_join_gui(player_cycle=self.player_cycle)
 
     async def start_game(self):
         """Checks if the game can start and assigns roles to players."""

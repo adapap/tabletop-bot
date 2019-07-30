@@ -92,7 +92,7 @@ class Game(AssetManager):
         kwargs.update({'color': EmbedColor.SUCCESS})
         await self.message(description, **kwargs)
 
-    async def player_join_gui(self, players):
+    async def player_join_gui(self, player_cycle):
         """An interface for joining, leaving, and adding bots to the game."""
         gui_embed = discord.Embed(title='Players', description='...')
         gui_embed.set_footer(text='Join using the buttons below!')
@@ -109,23 +109,25 @@ class Game(AssetManager):
             await gui.remove_reaction(reaction, user)
             command = reaction.emoji.name
             if command == 'play':
-                if not 5 <= len(players) <= 10:
+                if not 5 <= player_cycle.num_players <= 10:
                     await self.error('You must have between 5-10 players to start the game.')
                 else:
                     await self.start_game()
                     break
             elif command == 'add_user':
-                result = await players.add_player(member=user)
+                result = await player_cycle.add_player(member=user)
                 if not result:
                     await self.warn(f'{user.name} is already in the game.')
-                gui_embed.description = '\n'.join(player.name for player in players)
-                await gui.edit(embed=gui_embed)
+                else:
+                    gui_embed.description = '\n'.join(player.name for player in player_cycle.players())
+                    await gui.edit(embed=gui_embed)
             elif command == 'remove_user':
-                result = await players.remove_player(id=user.id)
+                result = await player_cycle.remove_player(id=user.id)
                 if not result:
                     await self.warn(f'You are not currently in the game.')
-                gui_embed.description = '\n'.join(player.name for player in players) if len(players) else '...'
-                await gui.edit(embed=gui_embed)
+                else:
+                    gui_embed.description = '\n'.join(player.name for player in player_cycle.players()) if player_cycle.num_players else '...'
+                    await gui.edit(embed=gui_embed)
             elif command == 'bot' and 'Tabletop Master' in map(lambda r: r.name, user.roles):
                 bot_check = lambda m: m.author.id == user.id
                 prompt = await self.message('How many bots?')
@@ -137,16 +139,17 @@ class Game(AssetManager):
                     num_bots = int(msg.content)
                     if num_bots < 1:
                         for _ in range(abs(num_bots)):
-                            if len(players.bots()) == 0:
+                            if len(player_cycle.bots()) == 0:
                                 continue
-                            await players.remove_player(players.bots()[-1])
+                            await player_cycle.remove_player(player_cycle.bots()[-1])
                     for _ in range(num_bots):
-                        result = await players.add_bot()
+                        result = await player_cycle.add_bot()
                         if not result:
                             await self.warn('Unable to add bot to the game.')
                             break
-                    gui_embed.description = '\n'.join(player.name for player in players.players())
-                    await gui.edit(embed=gui_embed)
+                    else:
+                        gui_embed.description = '\n'.join(player.name for player in player_cycle.players())
+                        await gui.edit(embed=gui_embed)
                 except ValueError:
                     await self.error('Invalid number.')
 

@@ -2,7 +2,7 @@ import discord
 from itertools import count
 from random import choice, sample
 
-class BasicPlayer:
+class BasePlayer:
     """An abstract player class to be modified by individual games."""
     def __init__(self, member: discord.Member):
         self.member = member

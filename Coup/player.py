@@ -1,8 +1,8 @@
 import discord
 
-from Player import BasicPlayer
+from Player import BasePlayer
 
-class Player(BasicPlayer):
+class Player(BasePlayer):
     def __init__(self, *, member: discord.Member):
         super().__init__(member)
         self.cards = []
