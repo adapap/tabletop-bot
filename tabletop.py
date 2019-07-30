@@ -16,7 +16,6 @@ from datetime import datetime
 from importlib import import_module
 
 # Custom
-from Game import Game
 from Utils import *
 
 class Cardbot(commands.Bot):
@@ -65,7 +64,6 @@ bot.remove_command('help')
 async def debug(ctx, *params: lower):
     """General purpose test command."""
     img = 'loading.gif'
-    asset_path = 'SecretHitler/assets/'
     image_path = 'SecretHitler/assets/' + img
     file = discord.File(image_path, filename=img)
     embed = discord.Embed(description='Loading!')
@@ -170,7 +168,7 @@ async def load_game(ctx, *game_name: str):
         bot.load_extension(f'{name}.commands')
     except commands.errors.ExtensionNotFound:
         print(f'No commands found for {game_name}.', file=sys.stderr)
-    except Exception as e:
+    except Exception:
         print(f'Failed to load extension for {game_name}.', file=sys.stderr)
         traceback.print_exc()
     msg = f'{game_name} loaded! Playing in #{game.channel}'
@@ -179,7 +177,7 @@ async def load_game(ctx, *game_name: str):
 
 @bot.command(aliases=['start'])
 async def start_game(ctx):
-	await bot.game.start_game()
+    await bot.game.start_game()
 
 @bot.command(aliases=['unload'])
 async def unload_game(ctx):
@@ -193,7 +191,7 @@ async def unload_game(ctx):
         bot.unload_extension(f'{name}.commands')
         await bot.game.channel.delete()
         bot.game = None
-    except Exception as e:
+    except Exception:
         print(f'Unloading failed.', file=sys.stderr)
         traceback.print_exc()
     msg = f'{game_name} has been unloaded.'
@@ -214,7 +212,7 @@ async def on_ready():
     print(separator)
     try:
         print(message)
-    except:
+    except Exception:
         print(message.encode(errors='replace').decode())
     print(uid_message)
     print('Prefix:', '$')
@@ -228,13 +226,13 @@ async def on_command_error(ctx, error):
         return
 
     error = getattr(error, 'original', error)
-    error_type = error.__class__
 
     if isinstance(error, commands.CommandNotFound) or isinstance(error, discord.errors.NotFound):
         return
 
     if isinstance(error, discord.errors.Forbidden):
-        await ctx.send(embed=Embed(title='Missing Permissions',
+        await ctx.send(embed=Embed(
+            title='Missing Permissions',
             description='Ensure the bot has necessary permissions including:\n`Manage Messages`.',
             color=EmbedColor.ERROR))
         return

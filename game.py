@@ -4,11 +4,8 @@ from discord import Embed
 from Image import AssetManager, ImageUtil
 from Utils import EmbedColor
 
-import io
+import asyncio
 from datetime import datetime
-from itertools import count
-from PIL import Image
-from random import sample
 
 class Game(AssetManager):
     """Game object for each game running through Discord."""
@@ -48,7 +45,8 @@ class Game(AssetManager):
         return (datetime.now() - self.start_time).seconds
 
     async def message(self, description: str='', *, embed=None, file=None,
-        title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None, footer=None, fields=None, image=None):
+                      title: str=None, color: int=EmbedColor.INFO, channel: discord.TextChannel=None,
+                      footer=None, fields=None, image=None):
         """
         An embed constructor which sends a message to the channel.
         Default channel is the channel in which the game was started.

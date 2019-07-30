@@ -1,7 +1,4 @@
-import discord
-from discord import Embed
 from discord.ext import commands
-import asyncio
 
 class SecretHitler(commands.Cog):
     def __init__(self, bot):

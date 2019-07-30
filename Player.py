@@ -63,7 +63,7 @@ class PlayerCycle:
         node = self.player_cls(member=member)
         if node in self.players():
             return False
-        if self.head == None:
+        if self.head is None:
             node.next = node
             node.prev = node
             self.head = node

@@ -1,25 +1,20 @@
 import asyncio
-import discord
 import io
-import re
-import os
-import sys
 import time
 from discord import Embed
-from itertools import count, cycle, islice
 from PIL import Image
-from random import shuffle, choice, sample, randint
+from random import shuffle, choice
 
 from . import bot_action
 from .cards import PolicyCard
 from .player import Player
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from Card import Deck
-from Game import Game
-from Image import ImageUtil
-from Player import PlayerCycle
-from Utils import EmbedColor
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ..Card import Deck
+from ..Game import Game
+from ..Image import ImageUtil
+from ..Player import PlayerCycle
+from ..Utils import EmbedColor
 
 
 class SecretHitler(Game):
@@ -98,7 +93,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         self.player = self.player.next
         return self.player
 
-    @property  
+    @property
     def valid_chancellors(self):
         """Returns a list of valid chancellor nominees."""
         valid = []
@@ -135,7 +130,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
         for i in range(self.board['liberal']):
             pos = (left + offset * i, top)
             liberal_board.alpha_composite(liberal_policy, pos)
-        
+
         # Fascist Policy
         left, offset = 51, 93
         for i in range(self.board['fascist']):
@@ -171,7 +166,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             return reaction.message.id == msg_id and user.id == user_id
         return predicate
 
-    async def executive_action(self): 
+    async def executive_action(self):
         """Manages the executive actions that the President must do after a fascist policy is passed."""
 
         # Executive Action - Investigate Loyalty
@@ -184,7 +179,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
                 identity = suspect.identity if suspect.identity != 'Hitler' else 'Fascist'
                 image = self.get_asset(f'party_{identity.lower()}.png')
                 await self.message(f'{suspect.name} is a {identity}.', channel=self.president.dm_channel, footer=self.president.name, image=image)
-                
+
         # Executive Action - Policy Peek
         elif self.board['fascist'] == 3 and self.player_count <= 6:
             self.stage = 'policy_peek'
@@ -254,7 +249,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             self.nominee = bot_action.choose_chancellor(self.valid_chancellors)
             await self.message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
             vote_msg = await self.message(title=f'0/{len(self.not_voted)} players voted.')
-            
+
             async def vote_handler(msg, player):
                 vote, _ = await self.bot.wait_for('reaction_add', check=self.react_select(msg.id, player.id))
                 vote = vote.emoji.name
@@ -287,7 +282,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             self.nominee = self.valid_chancellors[index]
             await self.message(f'{self.nominee.name} has been nominated to be the Chancellor! Send in your votes!')
             vote_msg = await self.message(title=f'0/{len(self.not_voted)} players voted.')
-                
+
             async def vote_handler(msg, player):
                 vote, _ = await self.bot.wait_for('reaction_add', check=self.react_select(msg.id, player.id))
                 vote = vote.emoji.name
@@ -354,19 +349,18 @@ The liberals must find and stop the Secret Hitler before it is too late.
             self.policies = [self.policies[i] for i in sorted(chancellor_policies)]
         else: # Bot chooses two policies
             self.policies = bot_action.select_policies(self.policies)
-        
+
         await self.success(f'The President has sent two policies to the Chancellor, {self.chancellor.name}, who must now choose one to enact.')
         if self.board['fascist'] >= 5:
             await self.message('As there are at least 5 fascist policies enacted, the Chancellor may choose to invoke his veto power and discard both policies.')
             message += ' - Veto Allowed'
-        
+
         self.enact_msg = await self.message('Choose a policy to enact.', title=f'Policies: {message}',
             channel=self.chancellor.dm_channel, footer=self.chancellor.name if self.chancellor.bot else '', image=image)
         await self.enact_policy()
 
     async def enact_policy(self):
         """The Chancellor enacts a policy, or vetoes if able and willing."""
-        veto_msg = None
         # Bot enacts or vetoes a policy
         if self.chancellor.bot:
             enacted = bot_action.enact_policy(self.policies)
@@ -459,11 +453,11 @@ The liberals must find and stop the Secret Hitler before it is too late.
             self.generate_deck()
             # Should there be a message saying the deck was reshuffled?
             # await self.message('As the deck had less than three policies remaining, the deck has been reshuffled.', color=EmbedColor.INFO)
-        
+
         if self.do_exec_act:
             self.do_exec_act = False
             await self.executive_action()
-        
+
         # Reset player statuses
         for player in self.players:
             player.last_chancellor = False
@@ -476,7 +470,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             'ja': [],
             'nein': []
         }
-        
+
         if self.chancellor:
             self.chancellor.last_chancellor = True
         if self.president and not self.special_election:
@@ -495,7 +489,7 @@ The liberals must find and stop the Secret Hitler before it is too late.
             # Remaining identities are filled with liberals
             identities.extend(['Liberal'] * ((self.player_count - len(identities))))
             shuffle(identities)
-            
+
             # Indicate what identity a player has and inform related parties
             fascists = []
             hitler = None
