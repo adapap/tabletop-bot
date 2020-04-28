@@ -1,0 +1,6 @@
+# Dotfiles
+.env
+.vscode
+
+# Library
+**/__pycache__
