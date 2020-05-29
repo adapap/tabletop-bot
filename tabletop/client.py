@@ -1,17 +1,17 @@
-from typing import Callable, Literal
+import discord
+from typing import Awaitable, Callable
 
 class Client:
     """Interface for interacting with various service APIs.
     
     Current integrations supported:
-    None
-    
-    WIP:
-    - Zoom
-    - Discord"""
-    message: Callable       
+    Discord"""
+    error: Callable
+    info: Callable
+    message: Callable[[str], Awaitable[None]]
+    warn: Callable
 
-class ZoomClient(Client):
+class DiscordClient(Client, discord.Client):
     """Client interface for Zoom chatbots."""
-    async def message(self, text: str, *, type_: any):
+    async def message(self, text: str) -> None:
         pass    
