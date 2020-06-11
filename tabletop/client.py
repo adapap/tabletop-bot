@@ -1,9 +1,7 @@
 import discord
-from typing import Awaitable, Callable
+from .games import GameCollection
 
-class TabletopClient:
+class Client:
     """The client that handles running the different games supported by Tabletop."""
-    error: Callable
-    info: Callable
-    message: Callable[[str], Awaitable[None]]
-    warn: Callable
+    def __init__(self, games: GameCollection):
+        self.games = games

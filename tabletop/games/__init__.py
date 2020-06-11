@@ -1,6 +1,12 @@
 import tabletop
 from tabletop.games import TheMind
-collection = [TheMind]
+from types import ModuleType
+from typing import List
+GameCollection = List[ModuleType]
+games: GameCollection = [TheMind]
+
+# To-do:
+# Handle events to be executed by game instances?
 
 class Game:
     """ABC which handles the creation of game instances.
