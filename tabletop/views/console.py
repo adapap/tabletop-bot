@@ -1,18 +1,7 @@
-# Standard output view
-# Supports the following events:
-"""Text
-Info
-Failure
-Success
-Create reactable
-Image
-Errors
-"""
-
 import sys
+import PIL
 from . import MessageType, View
 from typing import List
-from PIL import Image
 
 class ConsoleView(View):
     """Console view is used to test the application through a command-line-interface.
@@ -31,10 +20,10 @@ class ConsoleView(View):
             selection = input('>')
         return selection
 
-    async def send_image(self, image_name: str):
+    async def send_image(self, image: PIL.Image):
         """Opens an image using the user's default image editor."""
-        image = Image.open(image_name)
         image.show()
-    async def send_error(self, error_msg: str):
+
+    async def send_error(self, msg: str):
         """Sends error message to standard error."""
-        sys.stderr.write(error_msg)
+        sys.stderr.write(msg)
