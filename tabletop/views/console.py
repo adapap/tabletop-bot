@@ -1,5 +1,5 @@
 import sys
-import PIL
+import PIL.Image
 from . import MessageType, View
 from typing import List
 
@@ -9,15 +9,15 @@ class ConsoleView(View):
     
     async def send_text(self, msg: str, msg_type: MessageType):
         """Sends text message to standard output with type indicated in brackets."""
-        sys.stdout.write(f'[{msg_type}] {msg}')
+        sys.stdout.write(f'[{msg_type.name}] {msg}\n')
         
     async def send_reactable(self, msg: str, options: List[str]) -> str:
         """Allows a user to submit a selection through a GUI interface.
         Returns a string with the user selection."""
         sys.stdout.write(f'{msg}\n')
         for i, option in enumerate(options):
-            sys.stdout.write(f'{i}. {msg}\n')
-            selection = input('>')
+            sys.stdout.write(f'{i + 1}. {option}\n')
+            selection = input('> ')
         return selection
 
     async def send_image(self, image: PIL.Image):

@@ -1,10 +1,4 @@
-import tabletop
-from tabletop.games import TheMind
-from types import ModuleType
-from typing import List
-GameCollection = List[ModuleType]
-games: GameCollection = [TheMind]
-
+from typing import Sequence, Type
 # To-do:
 # Handle events to be executed by game instances?
 
@@ -37,5 +31,7 @@ class Game:
         Use to clear and reset the game state."""
         raise NotImplementedError
 
-    def __init__(self, client: tabletop.Client):
+    def __init__(self, client):
         self._client = client
+
+GameCollection = Sequence[Type[Game]]

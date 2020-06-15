@@ -1,5 +1,5 @@
 import enum
-import PIL
+import PIL.Image
 from typing import List
 
 class MessageType(enum.Enum):
@@ -28,7 +28,7 @@ class View:
         
     async def send_reactable(self, msg: str, options: List[str]) -> str:
         """Allows a user to submit a selection through an interface. 
-        Returns a string with the user selection."""
+        Returns the object referencing the reactable."""
         raise NotImplementedError()
     
     async def send_image(self, image: PIL.Image):
