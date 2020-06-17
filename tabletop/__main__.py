@@ -17,6 +17,7 @@ args = parser.parse_args()
 
 if args.view == 'console':
     view = ConsoleView()
+
 client = tabletop.Client(view, games)
 loop = asyncio.get_event_loop()
 loop.run_until_complete(client.connect())

@@ -1,5 +1,6 @@
 import enum
 import PIL.Image
+from tabletop.util import Reactable
 from typing import List
 
 class MessageType(enum.Enum):
@@ -17,7 +18,7 @@ class View:
     images, as well as receiving user input.
     
     A view must implement the following asynchronous methods:
-    - `send_text(msg: str, msg_type: MessageType)`
+    - `send_text(reactable: Reactable)`
     - `send_reactable(msg: str, options: List[str])`
     - `send_image(image: PIL.Image)`
     - `send_error(msg: str)`
@@ -26,7 +27,7 @@ class View:
         """Sends text with specified type."""
         raise NotImplementedError()
         
-    async def send_reactable(self, msg: str, options: List[str]) -> str:
+    async def send_reactable(self, reactable: Reactable) -> str:
         """Allows a user to submit a selection through an interface. 
         Returns the object referencing the reactable."""
         raise NotImplementedError()
